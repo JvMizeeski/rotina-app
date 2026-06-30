@@ -34,7 +34,6 @@ const getSampleRegisters = (habits: Habito[]): RegistroDiario[] => {
           data: dateStr,
           concluido: true,
           horas_dedicadas: habit.categoria === 'Estudos' ? 1.5 : habit.categoria === 'Saúde' ? 0.5 : 1.0,
-          nota_humor: Math.floor(Math.random() * 3) + 3, // 3 to 5
           comentario: 'Mantendo o foco diário! ✨'
         });
       }
@@ -181,7 +180,6 @@ export const dataService = {
             .update({
               concluido: registro.concluido,
               horas_dedicadas: registro.horas_dedicadas,
-              nota_humor: registro.nota_humor,
               comentario: registro.comentario
             })
             .eq('id', existing.id)

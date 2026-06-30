@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent, MouseEvent } from 'react';
-import { Plus, Calendar, Smile, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2, ShieldAlert } from 'lucide-react';
+import { Plus, Calendar, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, isSupabaseConfigured } from '../lib/supabase';
 
@@ -58,7 +58,6 @@ export default function Checklist() {
       data: selectedDate,
       concluido: false,
       horas_dedicadas: 0,
-      nota_humor: 5,
       comentario: ''
     };
 
@@ -83,20 +82,18 @@ export default function Checklist() {
     }
   };
 
-  const handleSaveDetails = async (habitId: string, horas: number, humor: number, comment: string) => {
+  const handleSaveDetails = async (habitId: string, horas: number, comment: string) => {
     const currentReg = registros[habitId] || {
       habito_id: habitId,
       data: selectedDate,
       concluido: false,
       horas_dedicadas: 0,
-      nota_humor: 5,
       comentario: ''
     };
 
     const updatedReg = {
       ...currentReg,
       horas_dedicadas: horas,
-      nota_humor: humor,
       comentario: comment,
       concluido: true // auto-conclude when details are updated/saved
     };
@@ -171,8 +168,6 @@ export default function Checklist() {
     }
   };
 
-  const emojis = ['😢', '😕', '😐', '🙂', '🤩'];
-
   return (
     <div className="pb-24 animate-fade-in" id="page-checklist">
       {/* Top Header Section */}
@@ -186,7 +181,7 @@ export default function Checklist() {
           </div>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-transform active:scale-95 text-sm cursor-pointer shadow-lg shadow-emerald-500/20"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold transition-transform active:scale-95 text-sm cursor-pointer shadow-lg shadow-purple-600/20"
             id="btn-add-habit"
           >
             <Plus size={18} />
@@ -194,20 +189,10 @@ export default function Checklist() {
           </button>
         </div>
 
-        {/* Cloud Warning if not Configured */}
-        {!isSupabaseConfigured && (
-          <div className="flex items-start gap-3 p-3 text-xs border rounded-xl bg-amber-500/10 border-amber-500/20 text-amber-400 leading-relaxed font-sans">
-            <ShieldAlert size={16} className="shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold">Modo Demo Local Ativo:</span> Crie o arquivo <code className="bg-zinc-950 px-1 py-0.5 rounded text-amber-200">.env</code> com <code className="text-amber-200">VITE_SUPABASE_URL</code> e <code className="text-amber-200">VITE_SUPABASE_ANON_KEY</code> para salvar na nuvem!
-            </div>
-          </div>
-        )}
-
         {/* Date Selector Banner */}
         <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-900 border border-zinc-800/80">
           <div className="flex items-center gap-3">
-            <Calendar className="text-emerald-400" size={20} />
+            <Calendar className="text-purple-400" size={20} />
             <div className="flex flex-col">
               <span className="text-xs text-zinc-400 font-mono">DATA DE REGISTRO</span>
               <span className="text-sm font-semibold text-white">
@@ -223,7 +208,7 @@ export default function Checklist() {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-700/80 text-white text-sm focus:outline-none focus:border-emerald-500 font-mono"
+            className="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-700/80 text-white text-sm focus:outline-none focus:border-purple-500 font-mono"
             id="input-date-picker"
           />
         </div>
@@ -254,7 +239,7 @@ export default function Checklist() {
                 key={habit.id}
                 className={`group rounded-2xl border transition-all duration-300 overflow-hidden ${
                   isCompleted
-                    ? 'bg-gradient-to-br from-zinc-900 to-emerald-950/20 border-emerald-500/30 shadow-md shadow-emerald-950/10'
+                    ? 'bg-gradient-to-br from-zinc-900 to-purple-950/20 border-purple-500/30 shadow-md shadow-purple-950/10'
                     : 'bg-zinc-900 border-zinc-800/60'
                 }`}
                 id={`habit-card-${habit.id}`}
@@ -269,7 +254,7 @@ export default function Checklist() {
                     <div
                       className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-300 ${
                         isCompleted
-                          ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 scale-105'
+                          ? 'bg-purple-600 border-purple-600 text-white shadow-md shadow-purple-600/20 scale-105'
                           : 'border-zinc-700 hover:border-zinc-500 bg-zinc-950 text-transparent'
                       }`}
                     >
@@ -279,7 +264,7 @@ export default function Checklist() {
                     <div className="min-w-0">
                       <h3
                         className={`text-base font-semibold leading-snug truncate transition-colors ${
-                          isCompleted ? 'text-emerald-300' : 'text-zinc-200'
+                          isCompleted ? 'text-purple-300' : 'text-zinc-200'
                         }`}
                       >
                         {habit.nome}
@@ -292,13 +277,8 @@ export default function Checklist() {
                           Meta: {habit.meta_semanal}x / sem
                         </span>
                         {itemReg.horas_dedicadas > 0 && (
-                          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-full border border-emerald-500/10 flex items-center gap-1">
+                          <span className="text-[10px] font-mono text-purple-400 bg-purple-500/5 px-2 py-0.5 rounded-full border border-purple-500/10 flex items-center gap-1">
                             <Clock size={10} /> {itemReg.horas_dedicadas}h
-                          </span>
-                        )}
-                        {itemReg.nota_humor > 0 && isCompleted && (
-                          <span className="text-[10px] bg-zinc-950/50 border border-zinc-800 px-1.5 py-0.5 rounded-full">
-                            {emojis[itemReg.nota_humor - 1]}
                           </span>
                         )}
                       </div>
@@ -331,11 +311,9 @@ export default function Checklist() {
                 {isExpanded && (
                   <HabitFormFields
                     initialHoras={itemReg.horas_dedicadas}
-                    initialHumor={itemReg.nota_humor}
                     initialComment={itemReg.comentario}
-                    onSave={(horas, humor, comment) => handleSaveDetails(habit.id, horas, humor, comment)}
+                    onSave={(horas, comment) => handleSaveDetails(habit.id, horas, comment)}
                     onClose={() => setExpandedHabitId(null)}
-                    emojis={emojis}
                   />
                 )}
               </div>
@@ -346,8 +324,8 @@ export default function Checklist() {
 
       {/* Floating Notification Toast */}
       {notification && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/30 text-emerald-300 px-5 py-3 rounded-full text-xs font-semibold shadow-2xl z-50 flex items-center gap-2 animate-bounce">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></div>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 border border-purple-500/30 text-purple-300 px-5 py-3 rounded-full text-xs font-semibold shadow-2xl z-50 flex items-center gap-2 animate-bounce">
+          <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></div>
           {notification}
         </div>
       )}
@@ -375,7 +353,7 @@ export default function Checklist() {
                   value={newNome}
                   onChange={(e) => setNewNome(e.target.value)}
                   placeholder="Ex: Ler livro, Fazer Cardio, Meditar..."
-                  className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 font-sans text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500 font-sans text-sm"
                   id="habit-name-input"
                 />
               </div>
@@ -386,7 +364,7 @@ export default function Checklist() {
                   <select
                     value={newCategoria}
                     onChange={(e) => setNewCategoria(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-emerald-500 text-sm cursor-pointer"
+                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-sm cursor-pointer"
                   >
                     <option value="Saúde">💪 Saúde</option>
                     <option value="Estudos">📚 Estudos</option>
@@ -400,7 +378,7 @@ export default function Checklist() {
                   <select
                     value={newMetaSemanal}
                     onChange={(e) => setNewMetaSemanal(Number(e.target.value))}
-                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-emerald-500 text-sm font-mono cursor-pointer"
+                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-sm font-mono cursor-pointer"
                   >
                     {[1, 2, 3, 4, 5, 6, 7].map(v => (
                       <option key={v} value={v}>{v}x na semana</option>
@@ -411,7 +389,7 @@ export default function Checklist() {
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-600 active:scale-95 transition-all text-sm mt-2 cursor-pointer shadow-lg shadow-emerald-500/15"
+                className="w-full py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 active:scale-95 transition-all text-sm mt-2 cursor-pointer shadow-lg shadow-purple-600/15"
                 id="habit-submit-button"
               >
                 Criar Hábito
@@ -426,23 +404,18 @@ export default function Checklist() {
 
 interface HabitFormFieldsProps {
   initialHoras: number;
-  initialHumor: number;
   initialComment: string;
-  onSave: (horas: number, humor: number, comment: string) => void;
+  onSave: (horas: number, comment: string) => void;
   onClose: () => void;
-  emojis: string[];
 }
 
 function HabitFormFields({
   initialHoras,
-  initialHumor,
   initialComment,
   onSave,
-  onClose,
-  emojis
+  onClose
 }: HabitFormFieldsProps) {
   const [horas, setHoras] = useState(initialHoras || 0);
-  const [humor, setHumor] = useState(initialHumor || 5);
   const [comment, setComment] = useState(initialComment || '');
 
   return (
@@ -451,7 +424,7 @@ function HabitFormFields({
         {/* Hours Log slider / input */}
         <div className="flex items-center justify-between">
           <span className="text-xs text-zinc-400 font-semibold flex items-center gap-1.5 uppercase tracking-wider">
-            <Clock size={14} className="text-emerald-400" /> Horas Dedicadas
+            <Clock size={14} className="text-purple-400" /> Horas Dedicadas
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -472,33 +445,6 @@ function HabitFormFields({
           </div>
         </div>
 
-        {/* Mood Selector Buttons */}
-        <div>
-          <span className="block text-xs text-zinc-400 font-semibold flex items-center gap-1.5 uppercase tracking-wider mb-2">
-            <Smile size={14} className="text-emerald-400" /> Humor do Dia
-          </span>
-          <div className="grid grid-cols-5 gap-1 bg-zinc-900 p-1 rounded-xl">
-            {emojis.map((emoji, idx) => {
-              const value = idx + 1;
-              const isSelected = humor === value;
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setHumor(value)}
-                  className={`py-2 rounded-lg text-lg transition-transform duration-200 active:scale-95 ${
-                    isSelected
-                      ? 'bg-emerald-500/20 border border-emerald-500/40 scale-105'
-                      : 'hover:bg-zinc-800 border border-transparent'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Comment Note input */}
         <div>
           <label className="block text-xs text-zinc-400 font-semibold uppercase tracking-wider mb-1.5">Nota ou Comentário</label>
@@ -507,15 +453,15 @@ function HabitFormFields({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Como foi seu desempenho hoje?"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-emerald-500"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-purple-500"
           />
         </div>
       </div>
 
       <div className="flex gap-2 mt-1">
         <button
-          onClick={() => onSave(horas, humor, comment)}
-          className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all text-xs cursor-pointer text-center"
+          onClick={() => onSave(horas, comment)}
+          className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all text-xs cursor-pointer text-center"
         >
           Salvar Detalhes
         </button>

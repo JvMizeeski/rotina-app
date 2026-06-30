@@ -26,6 +26,5 @@ export interface RegistroDiario {
   data: string; // YYYY-MM-DD
   concluido: boolean;
   horas_dedicadas: number;
-  nota_humor: number; // 1 to 5
   comentario: string;
 }

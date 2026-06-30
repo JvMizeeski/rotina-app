@@ -23,14 +23,14 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-zinc-100 flex flex-col selection:bg-emerald-500 selection:text-slate-900" id="app-root">
+    <div className="min-h-screen bg-slate-950 text-zinc-100 flex flex-col selection:bg-purple-600 selection:text-white" id="app-root">
       {/* Container simulating a mobile phone body when on larger screens */}
       <div className="w-full max-w-md mx-auto min-h-screen bg-zinc-950 border-x border-zinc-900 flex flex-col relative px-5 pt-6 pb-24 shadow-2xl">
         
         {/* Logo and branding header */}
         <div className="flex items-center gap-2 mb-6 border-b border-zinc-900 pb-4">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Sparkles size={16} className="text-slate-950 font-bold" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <Sparkles size={16} className="text-white font-bold" />
           </div>
           <div>
             <h2 className="text-sm font-black text-white tracking-widest font-sans uppercase">AuraTrack</h2>
@@ -52,7 +52,7 @@ export default function App() {
               onClick={() => setActiveTab('checklist')}
               className={`flex flex-col items-center justify-center gap-1.5 w-16 h-14 rounded-2xl transition-all cursor-pointer ${
                 activeTab === 'checklist'
-                  ? 'text-emerald-400 font-bold scale-105'
+                  ? 'text-purple-400 font-bold scale-105'
                   : 'text-zinc-500 hover:text-zinc-300'
               }`}
               id="tab-nav-checklist"
@@ -66,7 +66,7 @@ export default function App() {
               onClick={() => setActiveTab('dashboard')}
               className={`flex flex-col items-center justify-center gap-1.5 w-16 h-14 rounded-2xl transition-all cursor-pointer ${
                 activeTab === 'dashboard'
-                  ? 'text-emerald-400 font-bold scale-105'
+                  ? 'text-purple-400 font-bold scale-105'
                   : 'text-zinc-500 hover:text-zinc-300'
               }`}
               id="tab-nav-dashboard"
@@ -80,7 +80,7 @@ export default function App() {
               onClick={() => setActiveTab('export')}
               className={`flex flex-col items-center justify-center gap-1.5 w-16 h-14 rounded-2xl transition-all cursor-pointer ${
                 activeTab === 'export'
-                  ? 'text-emerald-400 font-bold scale-105'
+                  ? 'text-purple-400 font-bold scale-105'
                   : 'text-zinc-500 hover:text-zinc-300'
               }`}
               id="tab-nav-export"

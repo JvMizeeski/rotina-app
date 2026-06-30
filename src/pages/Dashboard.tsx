@@ -53,14 +53,6 @@ export default function Dashboard() {
     return registros.reduce((sum, r) => sum + (Number(r.horas_dedicadas) || 0), 0);
   };
 
-  // Helper to compute average mood this week (1-5 scale)
-  const getAverageMood = () => {
-    const moods = registros.filter(r => r.nota_humor > 0).map(r => r.nota_humor);
-    if (moods.length === 0) return 0;
-    const avg = moods.reduce((sum, val) => sum + val, 0) / moods.length;
-    return Number(avg.toFixed(1));
-  };
-
   // Helper for overall checklist completion rate
   const getOverallCompletionRate = () => {
     if (habitos.length === 0) return 0;
@@ -80,54 +72,42 @@ export default function Dashboard() {
     }
   };
 
-  const emojis = ['😢', '😕', '😐', '🙂', '🤩'];
-  const moodEmoji = getAverageMood() > 0 ? emojis[Math.round(getAverageMood()) - 1] : '🧘';
-
   return (
     <div className="pb-24 animate-fade-in" id="page-dashboard">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-white">Progresso Semanal</h1>
         <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1 font-mono uppercase">
-          <Calendar size={12} className="text-emerald-400" />
+          <Calendar size={12} className="text-purple-400" />
           Período: {weekRange.start ? new Date(weekRange.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }) : ''} - {weekRange.end ? new Date(weekRange.end + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }) : ''}
         </p>
       </div>
 
       {/* Overview Stats Cards Grid */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-center flex flex-col justify-between">
-          <span className="text-[9px] text-zinc-400 uppercase font-bold font-mono">Consistência</span>
-          <div className="my-2 text-xl font-extrabold text-emerald-400 flex items-center justify-center gap-1">
-            <Award size={18} />
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="p-4.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-center flex flex-col justify-between shadow-lg">
+          <span className="text-[10px] text-zinc-400 uppercase font-bold font-mono tracking-wider">Consistência</span>
+          <div className="my-3 text-2xl font-extrabold text-purple-400 flex items-center justify-center gap-1.5">
+            <Award size={22} />
             <span>{getOverallCompletionRate()}%</span>
           </div>
-          <span className="text-[8px] text-zinc-500 leading-tight">Da meta total</span>
+          <span className="text-[9px] text-zinc-500 leading-tight">Da meta total semanal</span>
         </div>
 
-        <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-center flex flex-col justify-between">
-          <span className="text-[9px] text-zinc-400 uppercase font-bold font-mono">Dedicação</span>
-          <div className="my-2 text-xl font-extrabold text-blue-400 flex items-center justify-center gap-1">
-            <Clock size={18} />
+        <div className="p-4.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-center flex flex-col justify-between shadow-lg">
+          <span className="text-[10px] text-zinc-400 uppercase font-bold font-mono tracking-wider">Dedicação</span>
+          <div className="my-3 text-2xl font-extrabold text-fuchsia-400 flex items-center justify-center gap-1.5">
+            <Clock size={22} />
             <span>{getTotalHours()}h</span>
           </div>
-          <span className="text-[8px] text-zinc-500 leading-tight">Focadas esta semana</span>
-        </div>
-
-        <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-center flex flex-col justify-between">
-          <span className="text-[9px] text-zinc-400 uppercase font-bold font-mono">Humor Médio</span>
-          <div className="my-2 text-xl font-extrabold text-purple-400 flex items-center justify-center gap-1">
-            <span className="text-lg">{moodEmoji}</span>
-            <span>{getAverageMood() || '-'}</span>
-          </div>
-          <span className="text-[8px] text-zinc-500 leading-tight">Média de humor</span>
+          <span className="text-[9px] text-zinc-500 leading-tight">Focadas esta semana</span>
         </div>
       </div>
 
       {/* Progress Bars Section */}
       <div className="p-5 rounded-3xl bg-zinc-900 border border-zinc-800/80">
         <h2 className="text-sm font-bold text-white mb-4 uppercase tracking-wider text-zinc-400 flex items-center gap-1.5 font-mono">
-          <Sparkles size={14} className="text-emerald-400" /> Metas Semanais por Hábito
+          <Sparkles size={14} className="text-purple-400" /> Metas Semanais por Hábito
         </h2>
 
         {loading ? (
@@ -155,7 +135,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className={`text-xs font-extrabold font-mono ${isGoalMet ? 'text-emerald-400' : 'text-zinc-400'}`}>
+                      <span className={`text-xs font-extrabold font-mono ${isGoalMet ? 'text-purple-400' : 'text-zinc-400'}`}>
                         {doneCount} de {target} dias
                       </span>
                       <span className="text-[9px] block text-zinc-500 font-mono">
@@ -169,8 +149,8 @@ export default function Dashboard() {
                     <div
                       className={`h-full rounded-full transition-all duration-700 ease-out-back ${
                         isGoalMet
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-sm shadow-emerald-500/25'
-                          : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                          ? 'bg-gradient-to-r from-purple-500 to-fuchsia-400 shadow-sm shadow-purple-500/25'
+                          : 'bg-gradient-to-r from-purple-800 to-purple-600'
                       }`}
                       style={{ width: `${Math.max(4, percent)}%` }}
                     />
@@ -183,10 +163,10 @@ export default function Dashboard() {
       </div>
 
       {/* Motivational message */}
-      <div className="mt-5 p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex items-center gap-3">
-        <Star className="text-emerald-400 shrink-0" size={18} />
+      <div className="mt-5 p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex items-center gap-3">
+        <Star className="text-purple-400 shrink-0" size={18} />
         <p className="text-[11px] text-zinc-300 font-medium leading-relaxed">
-          Cada pequeno passo conta! Hábitos concluídos ajudam a reprogramar sua rotina diária para o sucesso. Mantenha as barras <span className="text-emerald-400 font-bold">verdes</span>!
+          Cada pequeno passo conta! Hábitos concluídos ajudam a reprogramar sua rotina diária para o sucesso. Mantenha as barras <span className="text-purple-400 font-bold">roxas</span>!
         </p>
       </div>
     </div>

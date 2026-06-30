@@ -40,13 +40,10 @@ export default function Export() {
       // KPI Summaries
       const completedRegs = registros.filter(r => r.concluido);
       const totalHours = registros.reduce((sum, r) => sum + (Number(r.horas_dedicadas) || 0), 0);
-      const validMoods = registros.filter(r => r.nota_humor > 0).map(r => r.nota_humor);
-      const avgMood = validMoods.length > 0 ? (validMoods.reduce((s, m) => s + m, 0) / validMoods.length).toFixed(1) : 'N/A';
 
       md += `## 📈 RESUMO GERAL\n`;
       md += `- **Check-ins Concluídos:** ${completedRegs.length} vezes nesta semana\n`;
-      md += `- **Tempo Total Focado:** ${totalHours} horas dedicadas\n`;
-      md += `- **Média de Humor:** ${avgMood} / 5.0\n\n`;
+      md += `- **Tempo Total Focado:** ${totalHours} horas dedicadas\n\n`;
 
       // Category breakdown
       md += `## 🗂️ DESEMPENHO POR HÁBITO\n`;
@@ -65,10 +62,8 @@ export default function Export() {
           md += `- **Logs Diários:**\n`;
           doneRegs.forEach(reg => {
             const dateFormatted = new Date(reg.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-            const moodMap = ['😢 Pessimista', '😕 Desanimado', '😐 Neutro', '🙂 Produtivo', '🤩 Excelente'];
-            const moodLabel = reg.nota_humor > 0 ? moodMap[reg.nota_humor - 1] : 'Sem registro';
             
-            md += `  - **[${dateFormatted}]** Concluído | Dedicado: ${reg.horas_dedicadas}h | Humor: ${moodLabel}\n`;
+            md += `  - **[${dateFormatted}]** Concluído | Dedicado: ${reg.horas_dedicadas}h\n`;
             if (reg.comentario) {
               md += `    *Nota:* "${reg.comentario}"\n`;
             }
@@ -81,8 +76,8 @@ export default function Export() {
 
       // Prompt section for Gemini AI
       md += `---\n`;
-      md += `## 🤖 SOLICITAÇÃO DE ANÁLISE IA (COPIE COM O TEXTO ACIMA)\n`;
-      md += `*Olá Gemini! Analise o meu relatório de rotina e hábitos acima. Identifique padrões de comportamento, gargalos de produtividade, correlações entre humor e dedicação horária, e me recomende 3 ações práticas personalizadas para otimizar minha consistência na próxima semana.*`;
+      md += `## 			 SOLICITAÇÃO DE ANÁLISE IA (COPIE COM O TEXTO ACIMA)\n`;
+      md += `*Olá Gemini! Analise o meu relatório de rotina e hábitos acima. Identifique padrões de comportamento, gargalos de produtividade, consistência no tempo de dedicação, e me recomende 3 ações práticas personalizadas para otimizar minha consistência na próxima semana.*`;
 
       setMarkdown(md);
     } catch (err) {
@@ -112,7 +107,7 @@ export default function Export() {
 
       {/* Control Card */}
       <div className="p-5 rounded-3xl bg-zinc-900 border border-zinc-800/80 mb-6 flex flex-col items-center text-center">
-        <FileText className="text-emerald-400 mb-3" size={32} />
+        <FileText className="text-purple-400 mb-3" size={32} />
         <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">Exportação para Inteligência Artificial</h2>
         <p className="text-xs text-zinc-400 mt-1 max-w-xs leading-relaxed">
           Nossa engine compila todas as métricas semanais e anotações subjetivas em um padrão consolidado de alta performance.
@@ -121,7 +116,7 @@ export default function Export() {
         <button
           onClick={generateReport}
           disabled={loading}
-          className="w-full py-3.5 rounded-2xl bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-600 transition-all active:scale-98 mt-5 text-xs uppercase tracking-wider font-mono shadow-lg shadow-emerald-500/10 cursor-pointer disabled:opacity-50"
+          className="w-full py-3.5 rounded-2xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all active:scale-98 mt-5 text-xs uppercase tracking-wider font-mono shadow-lg shadow-purple-600/15 cursor-pointer disabled:opacity-50"
           id="btn-generate-report"
         >
           {loading ? 'Compilando Métricas...' : 'Gerar Relatório Semanal'}
@@ -133,13 +128,13 @@ export default function Export() {
         <div className="flex flex-col gap-3 animate-fade-in">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase font-mono tracking-wider text-zinc-400 flex items-center gap-1">
-              <Sparkles size={12} className="text-emerald-400" /> Prévia do Markdown
+              <Sparkles size={12} className="text-purple-400" /> Prévia do Markdown
             </span>
             <button
               onClick={handleCopy}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                 copied
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
                   : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white'
               }`}
               id="btn-copy-report"
@@ -167,11 +162,11 @@ export default function Export() {
           </div>
 
           <div className="flex items-start gap-3 p-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 mt-2">
-            <Brain className="text-emerald-400 shrink-0 mt-0.5" size={18} />
+            <Brain className="text-purple-400 shrink-0 mt-0.5" size={18} />
             <div className="text-left">
               <h4 className="text-xs font-bold text-white">Como usar com a IA?</h4>
               <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
-                Toque no botão <span className="text-emerald-400 font-bold">Copiar Relatório</span> acima, vá para o Gemini, cole o relatório gerado e envie. Ele dará uma análise profunda do seu comportamento corporal, intelectual e mental!
+                Toque no botão <span className="text-purple-400 font-bold">Copiar Relatório</span> acima, vá para o Gemini, cole o relatório gerado e envie. Ele dará uma análise profunda do seu comportamento corporal, intelectual e mental!
               </p>
             </div>
           </div>
