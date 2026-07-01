@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Award, Star, Clock, Sparkles } from 'lucide-react';
 import { dataService } from '../lib/dataService';
-import { Habito, RegistroDiario } from '../lib/supabase';
+import { Habito, RegistroDiario, formatHorasDedicadas } from '../lib/supabase';
 
-export default function Dashboard() {
+export default function Dashboard({ user }: { user: any }) {
   const [habitos, setHabitos] = useState<Habito[]>([]);
   const [registros, setRegistros] = useState<RegistroDiario[]>([]);
   const [weekRange, setWeekRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
@@ -31,8 +31,8 @@ export default function Dashboard() {
   const loadData = async (start: string, end: string) => {
     try {
       setLoading(true);
-      const allHabits = await dataService.getHabitos();
-      const allRegs = await dataService.getRegistros(start, end);
+      const allHabits = await dataService.getHabitos(user.username);
+      const allRegs = await dataService.getRegistros(start, end, user.username);
       
       setHabitos(allHabits);
       setRegistros(allRegs);
@@ -98,7 +98,7 @@ export default function Dashboard() {
           <span className="text-[10px] text-zinc-400 uppercase font-bold font-mono tracking-wider">Dedicação</span>
           <div className="my-3 text-2xl font-extrabold text-fuchsia-400 flex items-center justify-center gap-1.5">
             <Clock size={22} />
-            <span>{getTotalHours()}h</span>
+            <span>{formatHorasDedicadas(getTotalHours())}</span>
           </div>
           <span className="text-[9px] text-zinc-500 leading-tight">Focadas esta semana</span>
         </div>

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { FileText, Copy, Check, Download, Brain, HelpCircle, Sparkles } from 'lucide-react';
 import { dataService } from '../lib/dataService';
-import { Habito, RegistroDiario } from '../lib/supabase';
+import { Habito, RegistroDiario, formatHorasDedicadas } from '../lib/supabase';
 
-export default function Export() {
+export default function Export({ user }: { user: any }) {
   const [markdown, setMarkdown] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,8 +23,8 @@ export default function Export() {
 
       // Fetch habits and registers for last 7 days
       const [habitos, registros] = await Promise.all([
-        dataService.getHabitos(),
-        dataService.getRegistros(startStr, endStr)
+        dataService.getHabitos(user.username),
+        dataService.getRegistros(startStr, endStr, user.username)
       ]);
 
       if (habitos.length === 0) {
@@ -34,6 +34,7 @@ export default function Export() {
 
       // Format report header
       let md = `# 📊 RELATÓRIO SEMANAL DE HÁBITOS E ROTINA\n`;
+      md += `**Usuário:** ${user.display_name} (@${user.username})\n`;
       md += `**Período:** ${new Date(startStr + 'T12:00:00').toLocaleDateString('pt-BR')} até ${new Date(endStr + 'T12:00:00').toLocaleDateString('pt-BR')}\n`;
       md += `**Gerado em:** ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\n`;
 
@@ -43,7 +44,7 @@ export default function Export() {
 
       md += `## 📈 RESUMO GERAL\n`;
       md += `- **Check-ins Concluídos:** ${completedRegs.length} vezes nesta semana\n`;
-      md += `- **Tempo Total Focado:** ${totalHours} horas dedicadas\n\n`;
+      md += `- **Tempo Total Focado:** ${formatHorasDedicadas(totalHours)}\n\n`;
 
       // Category breakdown
       md += `## 🗂️ DESEMPENHO POR HÁBITO\n`;
@@ -63,7 +64,7 @@ export default function Export() {
           doneRegs.forEach(reg => {
             const dateFormatted = new Date(reg.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
             
-            md += `  - **[${dateFormatted}]** Concluído | Dedicado: ${reg.horas_dedicadas}h\n`;
+            md += `  - **[${dateFormatted}]** Concluído | Dedicado: ${formatHorasDedicadas(reg.horas_dedicadas)}\n`;
             if (reg.comentario) {
               md += `    *Nota:* "${reg.comentario}"\n`;
             }

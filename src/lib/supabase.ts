@@ -50,6 +50,7 @@ export interface Habito {
   nome: string;
   categoria: string;
   meta_semanal: number; // number of times per week
+  usuario_id?: string;
   created_at?: string;
 }
 
@@ -60,4 +61,20 @@ export interface RegistroDiario {
   concluido: boolean;
   horas_dedicadas: number;
   comentario: string;
+  usuario_id?: string;
+}
+
+// Utility to format decimal hours into friendly representation (e.g. 0.75h -> 45m, 1.5h -> 1h 30m)
+export function formatHorasDedicadas(horas: number): string {
+  if (!horas || horas <= 0) return '0m';
+  const totalMinutos = Math.round(horas * 60);
+  if (totalMinutos < 60) {
+    return `${totalMinutos}m`;
+  }
+  const h = Math.floor(totalMinutos / 60);
+  const m = totalMinutos % 60;
+  if (m === 0) {
+    return `${h}h`;
+  }
+  return `${h}h ${m}m`;
 }
