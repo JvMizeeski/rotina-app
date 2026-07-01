@@ -4,18 +4,28 @@ const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const rawAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Clean spaces and potential literal quotes from copy-paste mistakes in GitHub Secrets
-const cleanUrl = rawUrl.trim().replace(/^["']|["']$/g, '');
+let cleanUrl = rawUrl.trim().replace(/^["']|["']$/g, '');
 const cleanAnonKey = rawAnonKey.trim().replace(/^["']|["']$/g, '');
+
+// Robust parser: If they pasted just the project ID or forgot https://, fix it automatically!
+if (cleanUrl) {
+  // If it's just the alphanumeric project ID (e.g. "gggertjmpapjixxygdfu" with no dots)
+  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+    if (!cleanUrl.includes('.')) {
+      cleanUrl = `https://${cleanUrl}.supabase.co`;
+    } else {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+  }
+  // Trim any trailing slashes
+  cleanUrl = cleanUrl.replace(/\/+$/, '');
+}
 
 let isConfigured = Boolean(cleanUrl && cleanAnonKey);
 let client = null;
 
 if (isConfigured) {
   try {
-    // Validate if the URL has a valid protocol to avoid crash inside createClient
-    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      throw new Error('A URL do Supabase precisa começar com http:// ou https://');
-    }
     client = createClient(cleanUrl, cleanAnonKey);
   } catch (err) {
     console.error('Erro catastrófico ao inicializar o cliente do Supabase:', err);
