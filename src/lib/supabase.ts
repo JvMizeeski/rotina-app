@@ -20,6 +20,9 @@ if (cleanUrl) {
     }
   }
   cleanUrl = cleanUrl.replace(/\/+$/, '');
+  // If the user pasted the API URL (e.g. ending with /rest/v1), strip it out
+  cleanUrl = cleanUrl.replace(/\/rest\/v1$/, '');
+  cleanUrl = cleanUrl.replace(/\/+$/, '');
 }
 
 let isConfigured = Boolean(cleanUrl && cleanAnonKey);
