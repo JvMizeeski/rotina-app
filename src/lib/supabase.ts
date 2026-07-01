@@ -1,15 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const rawAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Real credentials provided by the user used as robust defaults
+const defaultUrl = 'https://gggertjmpapjixxygdfu.supabase.co';
+const defaultAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnZ2VydGptcGFwaml4eHlnZGZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzI2ODUsImV4cCI6MjA5ODQwODY4NX0.LO-oazjqMa2nVF5XUkOw5FA2iCUmkcm0UeUrd5f10OE';
 
-// Clean spaces and potential literal quotes from copy-paste mistakes in GitHub Secrets
+const rawUrl = import.meta.env.VITE_SUPABASE_URL || defaultUrl;
+const rawAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || defaultAnonKey;
+
+// Clean spaces and potential literal quotes from copy-paste mistakes
 let cleanUrl = rawUrl.trim().replace(/^["']|["']$/g, '');
 const cleanAnonKey = rawAnonKey.trim().replace(/^["']|["']$/g, '');
 
-// Robust parser: If they pasted just the project ID or forgot https://, fix it automatically!
 if (cleanUrl) {
-  // If it's just the alphanumeric project ID (e.g. "gggertjmpapjixxygdfu" with no dots)
   if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
     if (!cleanUrl.includes('.')) {
       cleanUrl = `https://${cleanUrl}.supabase.co`;
@@ -17,7 +19,6 @@ if (cleanUrl) {
       cleanUrl = `https://${cleanUrl}`;
     }
   }
-  // Trim any trailing slashes
   cleanUrl = cleanUrl.replace(/\/+$/, '');
 }
 
@@ -37,7 +38,7 @@ if (isConfigured) {
 // Check if variables are configured
 export const isSupabaseConfigured = isConfigured;
 
-// Create Supabase client (only if credentials exist, otherwise null)
+// Create Supabase client
 export const supabase = client;
 
 // Standard TypeScript types for our tables
