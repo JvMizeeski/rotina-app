@@ -1,6 +1,6 @@
 {
-  "name": "AuraTrack Mobile",
-  "description": "Rastreador de rotina e hábitos focado em mobile, integrado ao Supabase e com exportação de relatórios para o Gemini AI.",
+  "name": "Rotina Track",
+  "description": "Rastreador de rotina e hábitos com layout dedicado para desktop e mobile, integrado ao Supabase.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
