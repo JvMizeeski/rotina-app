@@ -203,17 +203,28 @@ export default function Checklist({ user }: ChecklistProps) {
     <div className="pb-24 animate-fade-in" id="page-checklist">
       {/* Top Welcome / Header Section */}
       <div className="flex flex-col gap-4 mb-6">
-        <div>
-          <span className="text-[10px] uppercase font-bold font-mono tracking-widest text-purple-400">Olá, {user.display_name}! 👋</span>
-          <h1 className="text-2xl font-black tracking-tight text-white font-sans mt-0.5">Minha Rotina</h1>
-          <p className="text-xs text-zinc-500 font-mono">
-            {isSupabaseConfigured ? '⚡ Sincronizado com Supabase' : '📱 Modo Offline Local (Demonstração)'}
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className="text-[10px] uppercase font-bold font-mono tracking-widest text-purple-400">Olá, {user.display_name}! 👋</span>
+            <h1 className="text-2xl font-black tracking-tight text-white font-sans mt-0.5">Minha Rotina</h1>
+            <p className="text-xs text-zinc-500 font-mono">
+              {isSupabaseConfigured ? '⚡ Sincronizado com Supabase' : '📱 Modo Offline Local (Demonstração)'}
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5 px-4.5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-transform active:scale-95 text-xs cursor-pointer shadow-lg shadow-purple-600/20 shrink-0"
+            id="btn-add-habit"
+          >
+            <Plus size={16} />
+            <span>Novo</span>
+          </button>
         </div>
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-2">
           {/* Date Selector Banner */}
-          <div className="flex items-center gap-3 p-3 px-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex-1">
+          <div className="flex items-center gap-3 p-3 px-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex-1 min-w-0">
             <Calendar className="text-purple-400 shrink-0" size={18} />
             <div className="flex flex-col min-w-0">
               <span className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase">DATA DE REGISTRO</span>
@@ -231,18 +242,9 @@ export default function Checklist({ user }: ChecklistProps) {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3.5 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 font-mono cursor-pointer"
+            className="px-3.5 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 font-mono cursor-pointer shrink-0"
             id="input-date-picker"
           />
-
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-4.5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-transform active:scale-95 text-xs cursor-pointer shadow-lg shadow-purple-600/20 shrink-0"
-            id="btn-add-habit"
-          >
-            <Plus size={16} />
-            <span>Novo</span>
-          </button>
         </div>
       </div>
 
