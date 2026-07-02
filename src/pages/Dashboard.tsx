@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Award, Star, Clock, Sparkles } from 'lucide-react';
 import { dataService } from '../lib/dataService';
-import { Habito, RegistroDiario, formatHorasDedicadas } from '../lib/supabase';
+import { Habito, RegistroDiario, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
 
 export default function Dashboard({ user }: { user: any }) {
   const [habitos, setHabitos] = useState<Habito[]>([]);
@@ -21,8 +21,8 @@ export default function Dashboard({ user }: { user: any }) {
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
 
-    const startStr = monday.toISOString().split('T')[0];
-    const endStr = sunday.toISOString().split('T')[0];
+    const startStr = getLocalDateString(monday);
+    const endStr = getLocalDateString(sunday);
 
     setWeekRange({ start: startStr, end: endStr });
     loadData(startStr, endStr);

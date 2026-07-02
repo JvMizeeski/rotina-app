@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent, MouseEvent } from 'react';
 import { Plus, Calendar, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2, Edit2 } from 'lucide-react';
 import { dataService } from '../lib/dataService';
-import { Habito, RegistroDiario, isSupabaseConfigured, formatHorasDedicadas } from '../lib/supabase';
+import { Habito, RegistroDiario, isSupabaseConfigured, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
 
 interface ChecklistProps {
   user: any;
@@ -11,7 +11,7 @@ export default function Checklist({ user }: ChecklistProps) {
   const [habitos, setHabitos] = useState<Habito[]>([]);
   const [registros, setRegistros] = useState<Record<string, RegistroDiario>>({});
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    getLocalDateString()
   );
   
   // Expanded states for habit detail forms

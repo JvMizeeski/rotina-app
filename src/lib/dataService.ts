@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured, Habito, RegistroDiario } from './supabase';
+import { supabase, isSupabaseConfigured, Habito, RegistroDiario, getLocalDateString } from './supabase';
 
 // Local storage keys
 const LOCAL_HABITS_KEY = 'habitracker_habitos';
@@ -23,7 +23,7 @@ const getSampleRegisters = (habits: Habito[], usuarioId: string): RegistroDiario
   for (let i = 0; i < 6; i++) {
     const d = new Date();
     d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
     
     habits.forEach((habit, index) => {
       // Complete randomly to make graphs beautiful

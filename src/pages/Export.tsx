@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FileText, Copy, Check, Download, Brain, HelpCircle, Sparkles } from 'lucide-react';
 import { dataService } from '../lib/dataService';
-import { Habito, RegistroDiario, formatHorasDedicadas } from '../lib/supabase';
+import { Habito, RegistroDiario, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
 
 export default function Export({ user }: { user: any }) {
   const [markdown, setMarkdown] = useState<string>('');
@@ -18,8 +18,8 @@ export default function Export({ user }: { user: any }) {
       const pastDate = new Date();
       pastDate.setDate(today.getDate() - 6); // past 7 days inclusive
 
-      const startStr = pastDate.toISOString().split('T')[0];
-      const endStr = today.toISOString().split('T')[0];
+      const startStr = getLocalDateString(pastDate);
+      const endStr = getLocalDateString(today);
 
       // Fetch habits and registers for last 7 days
       const [habitos, registros] = await Promise.all([
