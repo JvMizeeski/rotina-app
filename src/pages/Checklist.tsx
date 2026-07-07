@@ -354,19 +354,16 @@ export default function Checklist({ user }: ChecklistProps) {
     <div className="pb-24 animate-fade-in" id="page-checklist">
       {/* Top Welcome / Header Section */}
       <div className="flex flex-col gap-4 mb-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
             <span className="text-[10px] uppercase font-bold font-mono tracking-widest text-purple-400">Olá, {user.display_name}! 👋</span>
             <h1 className="text-2xl font-black tracking-tight text-white font-sans mt-0.5">Minha Rotina</h1>
-            <p className="text-xs text-zinc-500 font-mono">
-              {isSupabaseConfigured ? '⚡ Sincronizado com Supabase' : '📱 Modo Offline Local (Demonstração)'}
-            </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => setIsReordering(!isReordering)}
-              className={`flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border ${
                 isReordering
                   ? 'bg-emerald-600 border-transparent text-white shadow-lg shadow-emerald-600/20'
                   : 'bg-zinc-900 hover:bg-zinc-850 text-zinc-300 border-zinc-800/80 hover:border-zinc-700'
@@ -387,7 +384,7 @@ export default function Checklist({ user }: ChecklistProps) {
 
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-1.5 px-4.5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-transform active:scale-95 text-xs cursor-pointer shadow-lg shadow-purple-600/20 shrink-0"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4.5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-transform active:scale-95 text-xs cursor-pointer shadow-lg shadow-purple-600/20 shrink-0"
               id="btn-add-habit"
             >
               <Plus size={16} />
