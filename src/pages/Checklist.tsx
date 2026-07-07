@@ -29,8 +29,15 @@ export default function Checklist({ user }: ChecklistProps) {
   const [editCategoria, setEditCategoria] = useState('Saúde');
   const [editMetaSemanal, setEditMetaSemanal] = useState(5);
 
-  // Notification Banner
-  const [notification, setNotification] = useState<string | null>(null);
+  // Loading states to prevent duplicate submission and handle network latency
+  const [isAdding, setIsAdding] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loadingToggles, setLoadingToggles] = useState<Record<string, boolean>>({});
+  const [savingDetails, setSavingDetails] = useState<Record<string, boolean>>({});
+  const [deletingHabits, setDeletingHabits] = useState<Record<string, boolean>>({});
+
+  // Notification Banner (Success / Error states)
+  const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -52,16 +59,20 @@ export default function Checklist({ user }: ChecklistProps) {
       setRegistros(regMap);
     } catch (err) {
       console.error(err);
-      showBanner('Erro ao carregar dados.');
+      showBanner('Erro ao carregar dados.', 'error');
     }
   };
 
-  const showBanner = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3000);
+  const showBanner = (text: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ text, type });
+    // Auto-clear notification after 3 seconds
+    const timer = setTimeout(() => setNotification(null), 3000);
+    return () => clearTimeout(timer);
   };
 
   const handleToggleConcluido = async (habitId: string) => {
+    if (loadingToggles[habitId]) return; // prevent duplicate clicks while pending
+
     const isCurrentlyDone = registros[habitId]?.concluido || false;
     const currentReg = registros[habitId] || {
       habito_id: habitId,
@@ -77,6 +88,7 @@ export default function Checklist({ user }: ChecklistProps) {
     };
 
     try {
+      setLoadingToggles(prev => ({ ...prev, [habitId]: true }));
       const saved = await dataService.saveRegistro(updatedReg, user.username);
       setRegistros(prev => ({
         ...prev,
@@ -84,15 +96,21 @@ export default function Checklist({ user }: ChecklistProps) {
       }));
       
       if (!isCurrentlyDone) {
-        showBanner('Hábito concluído! Bom trabalho! 🎉');
+        showBanner('Hábito concluído! Bom trabalho! 🎉', 'success');
+      } else {
+        showBanner('Hábito desmarcado.', 'success');
       }
     } catch (err) {
       console.error(err);
-      showBanner('Erro ao salvar registro.');
+      showBanner('Erro ao salvar registro.', 'error');
+    } finally {
+      setLoadingToggles(prev => ({ ...prev, [habitId]: false }));
     }
   };
 
   const handleSaveDetails = async (habitId: string, horas: number, comment: string) => {
+    if (savingDetails[habitId]) return; // prevent duplicate saves
+
     const currentReg = registros[habitId] || {
       habito_id: habitId,
       data: selectedDate,
@@ -109,42 +127,49 @@ export default function Checklist({ user }: ChecklistProps) {
     };
 
     try {
+      setSavingDetails(prev => ({ ...prev, [habitId]: true }));
       const saved = await dataService.saveRegistro(updatedReg, user.username);
       setRegistros(prev => ({
         ...prev,
         [habitId]: saved
       }));
       setExpandedHabitId(null);
-      showBanner('Detalhes salvos com sucesso! 💪');
+      showBanner('Detalhes salvos com sucesso! 💪', 'success');
     } catch (err) {
       console.error(err);
-      showBanner('Erro ao salvar detalhes.');
+      showBanner('Erro ao salvar detalhes.', 'error');
+    } finally {
+      setSavingDetails(prev => ({ ...prev, [habitId]: false }));
     }
   };
 
   const handleAddHabitoSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!newNome.trim()) return;
+    if (!newNome.trim() || isAdding) return;
 
     try {
+      setIsAdding(true);
       const added = await dataService.addHabito(newNome, newCategoria, newMetaSemanal, user.username);
       setHabitos(prev => [...prev, added]);
       setIsAddModalOpen(false);
       setNewNome('');
       setNewCategoria('Saúde');
       setNewMetaSemanal(5);
-      showBanner('Novo hábito adicionado! 🚀');
+      showBanner('Novo hábito adicionado! 🚀', 'success');
     } catch (err) {
       console.error(err);
-      showBanner('Erro ao adicionar hábito.');
+      showBanner('Erro ao adicionar hábito.', 'error');
+    } finally {
+      setIsAdding(false);
     }
   };
 
   const handleEditHabitoSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!editingHabit || !editNome.trim()) return;
+    if (!editingHabit || !editNome.trim() || isEditing) return;
 
     try {
+      setIsEditing(true);
       const updated = await dataService.updateHabito(
         editingHabit.id,
         editNome,
@@ -154,27 +179,34 @@ export default function Checklist({ user }: ChecklistProps) {
       );
       setHabitos(prev => prev.map(h => h.id === editingHabit.id ? updated : h));
       setEditingHabit(null);
-      showBanner('Hábito editado com sucesso! ✏️');
+      showBanner('Hábito editado com sucesso! ✏️', 'success');
     } catch (err) {
       console.error(err);
-      showBanner('Erro ao editar hábito.');
+      showBanner('Erro ao editar hábito.', 'error');
+    } finally {
+      setIsEditing(false);
     }
   };
 
   const handleDeleteHabito = async (habitId: string, e: MouseEvent) => {
     e.stopPropagation();
+    if (deletingHabits[habitId]) return;
+    
     if (confirm('Deseja realmente excluir este hábito e todo o seu histórico?')) {
       try {
+        setDeletingHabits(prev => ({ ...prev, [habitId]: true }));
         await dataService.deleteHabito(habitId, user.username);
         setHabitos(prev => prev.filter(h => h.id !== habitId));
         // remove from local register state
         const updatedRegs = { ...registros };
         delete updatedRegs[habitId];
         setRegistros(updatedRegs);
-        showBanner('Hábito removido com sucesso.');
+        showBanner('Hábito removido com sucesso.', 'success');
       } catch (err) {
         console.error(err);
-        showBanner('Erro ao remover hábito.');
+        showBanner('Erro ao remover hábito.', 'error');
+      } finally {
+        setDeletingHabits(prev => ({ ...prev, [habitId]: false }));
       }
     }
   };
@@ -279,7 +311,9 @@ export default function Checklist({ user }: ChecklistProps) {
               >
                 {/* Master click area */}
                 <div 
-                  className="flex items-center justify-between p-4 gap-3 cursor-pointer select-none active:bg-zinc-800/20"
+                  className={`flex items-center justify-between p-4 gap-3 cursor-pointer select-none active:bg-zinc-800/20 transition-opacity ${
+                    loadingToggles[habit.id] ? 'opacity-60 pointer-events-none' : ''
+                  }`}
                   onClick={() => handleToggleConcluido(habit.id)}
                 >
                   <div className="flex items-center gap-4 min-w-0">
@@ -291,7 +325,11 @@ export default function Checklist({ user }: ChecklistProps) {
                           : 'border-zinc-700 bg-zinc-950 hover:border-zinc-500'
                       }`}
                     >
-                      <Check size={16} strokeWidth={3.5} className={isCompleted ? 'block' : 'opacity-0'} />
+                      {loadingToggles[habit.id] ? (
+                        <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Check size={16} strokeWidth={3.5} className={isCompleted ? 'block' : 'opacity-0'} />
+                      )}
                     </div>
 
                     <div className="min-w-0">
@@ -323,7 +361,8 @@ export default function Checklist({ user }: ChecklistProps) {
                     {/* Expand Detail toggle */}
                     <button
                       onClick={() => setExpandedHabitId(isExpanded ? null : habit.id)}
-                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer"
+                      disabled={loadingToggles[habit.id] || deletingHabits[habit.id]}
+                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Detalhar registro"
                     >
                       {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -338,7 +377,8 @@ export default function Checklist({ user }: ChecklistProps) {
                         setEditCategoria(habit.categoria);
                         setEditMetaSemanal(habit.meta_semanal);
                       }}
-                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-purple-400 hover:bg-zinc-900 transition-colors cursor-pointer"
+                      disabled={loadingToggles[habit.id] || deletingHabits[habit.id]}
+                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-purple-400 hover:bg-zinc-900 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Editar hábito"
                     >
                       <Edit2 size={15} />
@@ -347,7 +387,8 @@ export default function Checklist({ user }: ChecklistProps) {
                     {/* Delete habit */}
                     <button
                       onClick={(e) => handleDeleteHabito(habit.id, e)}
-                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-500 hover:text-rose-400 hover:bg-zinc-900 transition-colors cursor-pointer"
+                      disabled={loadingToggles[habit.id] || deletingHabits[habit.id]}
+                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-500 hover:text-rose-400 hover:bg-zinc-900 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Excluir hábito"
                     >
                       <Trash2 size={15} />
@@ -362,6 +403,7 @@ export default function Checklist({ user }: ChecklistProps) {
                     initialComment={itemReg.comentario}
                     onSave={(horas, comment) => handleSaveDetails(habit.id, horas, comment)}
                     onClose={() => setExpandedHabitId(null)}
+                    isSaving={!!savingDetails[habit.id]}
                   />
                 )}
               </div>
@@ -372,9 +414,15 @@ export default function Checklist({ user }: ChecklistProps) {
 
       {/* Floating Notification Toast */}
       {notification && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 border border-purple-500/30 text-purple-300 px-5 py-3 rounded-full text-xs font-semibold shadow-2xl z-50 flex items-center gap-2 animate-bounce">
-          <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping"></div>
-          {notification}
+        <div className={`fixed bottom-24 left-1/2 -translate-x-1/2 border px-5 py-3 rounded-full text-xs font-semibold shadow-2xl z-50 flex items-center gap-2 animate-bounce ${
+          notification.type === 'error'
+            ? 'bg-rose-950/95 border-rose-500/30 text-rose-300'
+            : 'bg-slate-900 border border-purple-500/30 text-purple-300'
+        }`}>
+          <div className={`w-1.5 h-1.5 rounded-full animate-ping ${
+            notification.type === 'error' ? 'bg-rose-400' : 'bg-purple-400'
+          }`}></div>
+          {notification.text}
         </div>
       )}
 
@@ -386,7 +434,8 @@ export default function Checklist({ user }: ChecklistProps) {
               <h2 className="text-base font-bold text-white uppercase tracking-wider">Adicionar Novo Hábito</h2>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer"
+                disabled={isAdding}
+                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer disabled:opacity-40"
               >
                 ✕
               </button>
@@ -398,10 +447,11 @@ export default function Checklist({ user }: ChecklistProps) {
                 <input
                   type="text"
                   required
+                  disabled={isAdding}
                   value={newNome}
                   onChange={(e) => setNewNome(e.target.value)}
                   placeholder="Ex: Ler livro, Fazer Cardio, Meditar..."
-                  className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500 font-sans text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-purple-500 font-sans text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   id="habit-name-input"
                 />
               </div>
@@ -411,8 +461,9 @@ export default function Checklist({ user }: ChecklistProps) {
                   <label className="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Categoria</label>
                   <select
                     value={newCategoria}
+                    disabled={isAdding}
                     onChange={(e) => setNewCategoria(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold cursor-pointer"
+                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="Saúde">💪 Saúde</option>
                     <option value="Estudos">📚 Estudos</option>
@@ -425,8 +476,9 @@ export default function Checklist({ user }: ChecklistProps) {
                   <label className="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Meta Semanal</label>
                   <select
                     value={newMetaSemanal}
+                    disabled={isAdding}
                     onChange={(e) => setNewMetaSemanal(Number(e.target.value))}
-                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold font-mono cursor-pointer"
+                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold font-mono cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {[1, 2, 3, 4, 5, 6, 7].map(v => (
                       <option key={v} value={v}>{v}x na semana</option>
@@ -437,10 +489,11 @@ export default function Checklist({ user }: ChecklistProps) {
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 active:scale-95 transition-all text-xs uppercase tracking-wider font-mono mt-2 cursor-pointer shadow-lg shadow-purple-600/15"
+                disabled={isAdding}
+                className="w-full py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 active:scale-95 transition-all text-xs uppercase tracking-wider font-mono mt-2 cursor-pointer shadow-lg shadow-purple-600/15 disabled:opacity-50 disabled:cursor-not-allowed"
                 id="habit-submit-button"
               >
-                Criar Hábito
+                {isAdding ? 'Criando hábito...' : 'Criar Hábito'}
               </button>
             </form>
           </div>
@@ -455,7 +508,8 @@ export default function Checklist({ user }: ChecklistProps) {
               <h2 className="text-base font-bold text-white uppercase tracking-wider">Editar Hábito</h2>
               <button
                 onClick={() => setEditingHabit(null)}
-                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer"
+                disabled={isEditing}
+                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer disabled:opacity-40"
               >
                 ✕
               </button>
@@ -467,10 +521,11 @@ export default function Checklist({ user }: ChecklistProps) {
                 <input
                   type="text"
                   required
+                  disabled={isEditing}
                   value={editNome}
                   onChange={(e) => setEditNome(e.target.value)}
                   placeholder="Nome do hábito..."
-                  className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 font-sans text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 font-sans text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -479,8 +534,9 @@ export default function Checklist({ user }: ChecklistProps) {
                   <label className="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Categoria</label>
                   <select
                     value={editCategoria}
+                    disabled={isEditing}
                     onChange={(e) => setEditCategoria(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold cursor-pointer"
+                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="Saúde">💪 Saúde</option>
                     <option value="Estudos">📚 Estudos</option>
@@ -493,8 +549,9 @@ export default function Checklist({ user }: ChecklistProps) {
                   <label className="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Meta Semanal</label>
                   <select
                     value={editMetaSemanal}
+                    disabled={isEditing}
                     onChange={(e) => setEditMetaSemanal(Number(e.target.value))}
-                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold font-mono cursor-pointer"
+                    className="w-full px-3 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:outline-none focus:border-purple-500 text-xs font-bold font-mono cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {[1, 2, 3, 4, 5, 6, 7].map(v => (
                       <option key={v} value={v}>{v}x na semana</option>
@@ -507,15 +564,17 @@ export default function Checklist({ user }: ChecklistProps) {
                 <button
                   type="button"
                   onClick={() => setEditingHabit(null)}
-                  className="flex-1 py-3.5 rounded-xl bg-zinc-800 text-zinc-400 hover:bg-zinc-700 font-bold text-xs uppercase tracking-wider font-mono cursor-pointer text-center"
+                  disabled={isEditing}
+                  className="flex-1 py-3.5 rounded-xl bg-zinc-800 text-zinc-400 hover:bg-zinc-700 font-bold text-xs uppercase tracking-wider font-mono cursor-pointer text-center disabled:opacity-40"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 active:scale-95 transition-all text-xs uppercase tracking-wider font-mono cursor-pointer shadow-lg shadow-purple-600/15 text-center"
+                  disabled={isEditing}
+                  className="flex-1 py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 active:scale-95 transition-all text-xs uppercase tracking-wider font-mono cursor-pointer shadow-lg shadow-purple-600/15 text-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Salvar Alterações
+                  {isEditing ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
             </form>
@@ -531,13 +590,15 @@ interface HabitFormFieldsProps {
   initialComment: string;
   onSave: (horas: number, comment: string) => void;
   onClose: () => void;
+  isSaving: boolean;
 }
 
 function HabitFormFields({
   initialHoras,
   initialComment,
   onSave,
-  onClose
+  onClose,
+  isSaving
 }: HabitFormFieldsProps) {
   // Convert hours to minutes for granular entry
   const [minutos, setMinutos] = useState(Math.round((initialHoras || 0) * 60));
@@ -560,15 +621,17 @@ function HabitFormFields({
           <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
+              disabled={isSaving}
               onClick={() => setMinutos(Math.max(0, minutos - 10))}
-              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors"
+              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors disabled:opacity-40"
             >
               -10m
             </button>
             <button
               type="button"
+              disabled={isSaving}
               onClick={() => setMinutos(Math.max(0, minutos - 5))}
-              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors"
+              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors disabled:opacity-40"
             >
               -5
             </button>
@@ -576,9 +639,10 @@ function HabitFormFields({
             <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 px-2 py-1 rounded-xl">
               <input
                 type="number"
+                disabled={isSaving}
                 value={minutos || ''}
                 onChange={(e) => setMinutos(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-10 bg-transparent text-white font-mono text-center text-xs focus:outline-none font-bold"
+                className="w-10 bg-transparent text-white font-mono text-center text-xs focus:outline-none font-bold disabled:opacity-50"
                 placeholder="0"
               />
               <span className="text-[10px] text-zinc-500 font-bold font-mono">min</span>
@@ -586,15 +650,17 @@ function HabitFormFields({
 
             <button
               type="button"
+              disabled={isSaving}
               onClick={() => setMinutos(minutos + 5)}
-              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors"
+              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors disabled:opacity-40"
             >
               +5
             </button>
             <button
               type="button"
+              disabled={isSaving}
               onClick={() => setMinutos(minutos + 15)}
-              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors"
+              className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors disabled:opacity-40"
             >
               +15m
             </button>
@@ -611,10 +677,11 @@ function HabitFormFields({
           <label className="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Nota ou Comentário</label>
           <input
             type="text"
+            disabled={isSaving}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Como foi seu desempenho hoje?"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-purple-500 font-medium"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-700 text-xs focus:outline-none focus:border-purple-500 font-medium disabled:opacity-60"
           />
         </div>
       </div>
@@ -622,13 +689,15 @@ function HabitFormFields({
       <div className="flex gap-2 mt-1">
         <button
           onClick={handleSave}
-          className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all text-xs cursor-pointer text-center uppercase font-mono tracking-wider"
+          disabled={isSaving}
+          className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all text-xs cursor-pointer text-center uppercase font-mono tracking-wider disabled:opacity-55 disabled:cursor-not-allowed"
         >
-          Salvar Detalhes
+          {isSaving ? 'Salvando...' : 'Salvar Detalhes'}
         </button>
         <button
           onClick={onClose}
-          className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 transition-all text-xs border border-zinc-850 cursor-pointer uppercase font-mono"
+          disabled={isSaving}
+          className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 transition-all text-xs border border-zinc-850 cursor-pointer uppercase font-mono disabled:opacity-55 disabled:cursor-not-allowed"
         >
           Cancelar
         </button>
