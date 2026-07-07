@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent, MouseEvent } from 'react';
-import { Plus, Calendar, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Calendar, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2, Edit2, ArrowUp, ArrowDown } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, isSupabaseConfigured, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
 
@@ -36,6 +36,10 @@ export default function Checklist({ user }: ChecklistProps) {
   const [savingDetails, setSavingDetails] = useState<Record<string, boolean>>({});
   const [deletingHabits, setDeletingHabits] = useState<Record<string, boolean>>({});
 
+  // Pending Toggle Modal State (for quick completion duration input)
+  const [pendingToggleHabitId, setPendingToggleHabitId] = useState<string | null>(null);
+  const [toggleMinutes, setToggleMinutes] = useState<number>(30);
+
   // Notification Banner (Success / Error states)
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -43,10 +47,47 @@ export default function Checklist({ user }: ChecklistProps) {
     loadData();
   }, [selectedDate, user.username]);
 
+  const sortHabitos = (habitsList: Habito[], username: string): Habito[] => {
+    const customOrder: string[] = JSON.parse(localStorage.getItem(`habitracker_habitos_ordem_${username}`) || '[]');
+    if (customOrder.length === 0) {
+      return habitsList;
+    }
+    return [...habitsList].sort((a, b) => {
+      const indexA = customOrder.indexOf(a.id);
+      const indexB = customOrder.indexOf(b.id);
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.nome.localeCompare(b.nome);
+    });
+  };
+
+  const handleMoveHabito = (habitId: string, direction: 'up' | 'down') => {
+    const index = habitos.findIndex(h => h.id === habitId);
+    if (index === -1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= habitos.length) return;
+
+    const newHabitos = [...habitos];
+    const temp = newHabitos[index];
+    newHabitos[index] = newHabitos[newIndex];
+    newHabitos[newIndex] = temp;
+
+    setHabitos(newHabitos);
+
+    const newOrderIds = newHabitos.map(h => h.id);
+    localStorage.setItem(`habitracker_habitos_ordem_${user.username}`, JSON.stringify(newOrderIds));
+    showBanner('Ordem atualizada!', 'success');
+  };
+
   const loadData = async () => {
     try {
       const allHabits = await dataService.getHabitos(user.username);
-      setHabitos(allHabits);
+      const sorted = sortHabitos(allHabits, user.username);
+      setHabitos(sorted);
 
       // Fetch registers for the single selected day
       const dailyRegs = await dataService.getRegistros(selectedDate, selectedDate, user.username);
@@ -74,6 +115,19 @@ export default function Checklist({ user }: ChecklistProps) {
     if (loadingToggles[habitId]) return; // prevent duplicate clicks while pending
 
     const isCurrentlyDone = registros[habitId]?.concluido || false;
+
+    if (isCurrentlyDone) {
+      // Just uncheck immediately without popping modal
+      executeToggleConcluido(habitId, 0, false);
+    } else {
+      // Open the time input modal!
+      setPendingToggleHabitId(habitId);
+      setToggleMinutes(30); // Default to 30 mins
+    }
+  };
+
+  const executeToggleConcluido = async (habitId: string, minutes: number, saveTime: boolean) => {
+    const isCurrentlyDone = registros[habitId]?.concluido || false;
     const currentReg = registros[habitId] || {
       habito_id: habitId,
       data: selectedDate,
@@ -84,7 +138,8 @@ export default function Checklist({ user }: ChecklistProps) {
 
     const updatedReg = {
       ...currentReg,
-      concluido: !isCurrentlyDone
+      concluido: !isCurrentlyDone,
+      horas_dedicadas: !isCurrentlyDone && saveTime ? Number((minutes / 60).toFixed(2)) : (isCurrentlyDone ? 0 : currentReg.horas_dedicadas)
     };
 
     try {
@@ -150,6 +205,12 @@ export default function Checklist({ user }: ChecklistProps) {
     try {
       setIsAdding(true);
       const added = await dataService.addHabito(newNome, newCategoria, newMetaSemanal, user.username);
+      
+      // Save new habit ID to custom ordering list in localStorage
+      const customOrder: string[] = JSON.parse(localStorage.getItem(`habitracker_habitos_ordem_${user.username}`) || '[]');
+      customOrder.push(added.id);
+      localStorage.setItem(`habitracker_habitos_ordem_${user.username}`, JSON.stringify(customOrder));
+
       setHabitos(prev => [...prev, added]);
       setIsAddModalOpen(false);
       setNewNome('');
@@ -253,29 +314,33 @@ export default function Checklist({ user }: ChecklistProps) {
             <span>Novo</span>
           </button>
         </div>
+      </div>
 
-        <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
           {/* Date Selector Banner */}
-          <div className="flex items-center gap-3 p-3 px-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex-1 min-w-0">
-            <Calendar className="text-purple-400 shrink-0" size={18} />
-            <div className="flex flex-col min-w-0">
-              <span className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase">DATA DE REGISTRO</span>
-              <span className="text-xs font-bold text-white truncate uppercase">
-                {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </span>
-            </div>
+        {/* Unified, full-clickable Date Selector Button/Card */}
+        <div className="relative flex items-center gap-3 p-3.5 px-4.5 rounded-2xl bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700/80 hover:bg-zinc-850/40 transition-all cursor-pointer w-full group">
+          <Calendar className="text-white group-hover:text-purple-400 shrink-0 transition-colors" size={18} />
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase">DATA DE REGISTRO</span>
+            <span className="text-xs font-bold text-white truncate uppercase flex items-center gap-1.5">
+              {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+              <span className="text-[9px] text-zinc-500 font-normal lowercase font-sans opacity-60 group-hover:opacity-100 group-hover:text-purple-300 transition-opacity">(clique para alterar)</span>
+            </span>
           </div>
-          
+          {/* Transparent date input covering the entire banner to allow clicking anywhere */}
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3.5 py-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 font-mono cursor-pointer shrink-0"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             id="input-date-picker"
+            title="Selecione outra data"
           />
         </div>
       </div>
@@ -348,9 +413,9 @@ export default function Checklist({ user }: ChecklistProps) {
                           Meta: {habit.meta_semanal}x/sem
                         </span>
                         {itemReg.horas_dedicadas > 0 && (
-                          <span className="text-[9px] font-bold font-mono text-purple-400 bg-purple-500/5 px-2 py-0.5 rounded-full border border-purple-500/10 flex items-center gap-1">
-                            <Clock size={10} /> {formatHorasDedicadas(itemReg.horas_dedicadas)}
-                          </span>
+                           <span className="text-[9px] font-bold font-mono text-purple-400 bg-purple-500/5 px-2 py-0.5 rounded-full border border-purple-500/10 flex items-center gap-1">
+                             <Clock size={10} /> {formatHorasDedicadas(itemReg.horas_dedicadas)}
+                           </span>
                         )}
                       </div>
                     </div>
@@ -358,6 +423,26 @@ export default function Checklist({ user }: ChecklistProps) {
 
                   {/* Right side expand / edit / trash tools */}
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* Move Up */}
+                    <button
+                      onClick={() => handleMoveHabito(habit.id, 'up')}
+                      disabled={loadingToggles[habit.id] || deletingHabits[habit.id] || habitos[0]?.id === habit.id}
+                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Mover para cima"
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+
+                    {/* Move Down */}
+                    <button
+                      onClick={() => handleMoveHabito(habit.id, 'down')}
+                      disabled={loadingToggles[habit.id] || deletingHabits[habit.id] || habitos[habitos.length - 1]?.id === habit.id}
+                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Mover para baixo"
+                    >
+                      <ArrowDown size={15} />
+                    </button>
+
                     {/* Expand Detail toggle */}
                     <button
                       onClick={() => setExpandedHabitId(isExpanded ? null : habit.id)}
@@ -578,6 +663,115 @@ export default function Checklist({ user }: ChecklistProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Completion Time Confirmation Modal */}
+      {pendingToggleHabitId && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-zinc-900 border border-zinc-800/80 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-slide-up">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                <Clock className="text-purple-400" size={16} /> Tempo de Atividade
+              </h2>
+              <button
+                onClick={() => setPendingToggleHabitId(null)}
+                className="text-zinc-500 hover:text-white font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Qual foi o tempo médio que você dedicou a essa atividade para cumpri-la hoje?
+              </p>
+
+              {/* Time Control Buttons and Input */}
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setToggleMinutes(Math.max(0, toggleMinutes - 10))}
+                    className="px-2.5 py-1.5 bg-zinc-950 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors cursor-pointer"
+                  >
+                    -10m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setToggleMinutes(Math.max(0, toggleMinutes - 5))}
+                    className="px-2.5 py-1.5 bg-zinc-950 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors cursor-pointer"
+                  >
+                    -5
+                  </button>
+
+                  <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl flex-1 justify-center">
+                    <input
+                      type="number"
+                      value={toggleMinutes || ''}
+                      onChange={(e) => setToggleMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-12 bg-transparent text-white font-mono text-center text-xs focus:outline-none font-bold"
+                      placeholder="0"
+                    />
+                    <span className="text-[10px] text-zinc-500 font-bold font-mono">min</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setToggleMinutes(toggleMinutes + 5)}
+                    className="px-2.5 py-1.5 bg-zinc-950 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors cursor-pointer"
+                  >
+                    +5
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setToggleMinutes(toggleMinutes + 15)}
+                    className="px-2.5 py-1.5 bg-zinc-950 hover:bg-zinc-800 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-400 transition-colors cursor-pointer"
+                  >
+                    +15m
+                  </button>
+                </div>
+
+                {/* Display friendly conversion */}
+                <div className="text-right text-[10px] text-zinc-500 font-bold font-mono uppercase tracking-wide">
+                  Dedicação: <span className="text-purple-400">{formatHorasDedicadas(toggleMinutes / 60)}</span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    executeToggleConcluido(pendingToggleHabitId, toggleMinutes, true);
+                    setPendingToggleHabitId(null);
+                  }}
+                  className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 active:scale-95 transition-all text-xs uppercase tracking-wider font-mono cursor-pointer shadow-lg shadow-purple-600/15 text-center"
+                >
+                  Salvar Tempo e Concluir
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    executeToggleConcluido(pendingToggleHabitId, 0, false);
+                    setPendingToggleHabitId(null);
+                  }}
+                  className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-300 font-semibold hover:bg-zinc-700 active:scale-95 transition-all text-xs uppercase tracking-wider font-mono cursor-pointer text-center"
+                >
+                  Concluir sem registrar tempo
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPendingToggleHabitId(null)}
+                  className="w-full py-2 text-zinc-500 hover:text-zinc-400 text-xs font-semibold font-mono cursor-pointer text-center mt-1"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

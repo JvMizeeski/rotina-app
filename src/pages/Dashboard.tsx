@@ -3,11 +3,14 @@ import { Calendar, Award, Star, Clock, Sparkles } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
 
+const CATEGORIES = ['Todos', 'Saúde', 'Estudos', 'Mente', 'Trabalho'];
+
 export default function Dashboard({ user }: { user: any }) {
   const [habitos, setHabitos] = useState<Habito[]>([]);
   const [registros, setRegistros] = useState<RegistroDiario[]>([]);
   const [weekRange, setWeekRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
 
   useEffect(() => {
     // Calculate current week (Monday to Sunday)
@@ -43,22 +46,30 @@ export default function Dashboard({ user }: { user: any }) {
     }
   };
 
+  // Filter habits according to selected category
+  const filteredHabits = selectedCategory === 'Todos'
+    ? habitos
+    : habitos.filter(h => h.categoria === selectedCategory);
+
   // Helper to count completions for a habit this week
   const getCompletedCount = (habitId: string) => {
     return registros.filter(r => r.habito_id === habitId && r.concluido).length;
   };
 
-  // Helper to compute total hours logged this week
+  // Helper to compute total hours logged this week for filtered habits
   const getTotalHours = () => {
-    return registros.reduce((sum, r) => sum + (Number(r.horas_dedicadas) || 0), 0);
+    const filteredHabitIds = filteredHabits.map(h => h.id);
+    return registros
+      .filter(r => filteredHabitIds.includes(r.habito_id))
+      .reduce((sum, r) => sum + (Number(r.horas_dedicadas) || 0), 0);
   };
 
-  // Helper for overall checklist completion rate
+  // Helper for overall checklist completion rate for filtered habits
   const getOverallCompletionRate = () => {
-    if (habitos.length === 0) return 0;
-    const totalPossibleConcl = habitos.reduce((acc, h) => acc + h.meta_semanal, 0);
+    if (filteredHabits.length === 0) return 0;
+    const totalPossibleConcl = filteredHabits.reduce((acc, h) => acc + h.meta_semanal, 0);
     if (totalPossibleConcl === 0) return 0;
-    const totalDone = habitos.reduce((acc, h) => acc + Math.min(getCompletedCount(h.id), h.meta_semanal), 0);
+    const totalDone = filteredHabits.reduce((acc, h) => acc + Math.min(getCompletedCount(h.id), h.meta_semanal), 0);
     return Math.round((totalDone / totalPossibleConcl) * 100);
   };
 
@@ -72,6 +83,50 @@ export default function Dashboard({ user }: { user: any }) {
     }
   };
 
+  // Helper to render a habit item
+  const renderHabitProgressItem = (habit: Habito) => {
+    const doneCount = getCompletedCount(habit.id);
+    const target = habit.meta_semanal;
+    const percent = Math.min(100, Math.round((doneCount / target) * 100));
+    const isGoalMet = doneCount >= target;
+
+    return (
+      <div key={habit.id} className="group" id={`dashboard-habit-${habit.id}`}>
+        {/* Label / Values Row */}
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="min-w-0 pr-2">
+            <span className="text-sm font-semibold text-zinc-200 block truncate group-hover:text-white transition-colors">
+              {habit.nome}
+            </span>
+            <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded border mt-0.5 font-mono ${getCategoryTagStyle(habit.categoria)}`}>
+              {habit.categoria}
+            </span>
+          </div>
+          <div className="text-right shrink-0">
+            <span className={`text-xs font-extrabold font-mono ${isGoalMet ? 'text-purple-400' : 'text-zinc-400'}`}>
+              {doneCount} de {target} dias
+            </span>
+            <span className="text-[9px] block text-zinc-500 font-mono">
+              {isGoalMet ? '🏆 Cumprida!' : `${percent}% completo`}
+            </span>
+          </div>
+        </div>
+
+        {/* Custom Track and Progress bar */}
+        <div className="w-full h-3 bg-zinc-950 rounded-full border border-zinc-800 overflow-hidden relative p-0.5">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ease-out-back ${
+              isGoalMet
+                ? 'bg-gradient-to-r from-purple-500 to-fuchsia-400 shadow-sm shadow-purple-500/25'
+                : 'bg-gradient-to-r from-purple-800 to-purple-600'
+            }`}
+            style={{ width: `${Math.max(4, percent)}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="pb-24 animate-fade-in" id="page-dashboard">
       {/* Header */}
@@ -81,6 +136,26 @@ export default function Dashboard({ user }: { user: any }) {
           <Calendar size={12} className="text-purple-400" />
           Período: {weekRange.start ? new Date(weekRange.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }) : ''} - {weekRange.end ? new Date(weekRange.end + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }) : ''}
         </p>
+      </div>
+
+      {/* Category Filter Badges */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1.5 scrollbar-none">
+        {CATEGORIES.map(cat => {
+          const isActive = selectedCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer border ${
+                isActive
+                  ? 'bg-purple-600 text-white border-transparent shadow-lg shadow-purple-600/10'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-800/80 hover:text-white hover:bg-zinc-800/60'
+              }`}
+            >
+              {cat === 'Todos' ? '🌐 Todos' : cat === 'Saúde' ? '💪 Saúde' : cat === 'Estudos' ? '📚 Estudos' : cat === 'Mente' ? '🧘 Mente' : '💼 Trabalho'}
+            </button>
+          );
+        })}
       </div>
 
       {/* Overview Stats Cards Grid */}
@@ -112,52 +187,31 @@ export default function Dashboard({ user }: { user: any }) {
 
         {loading ? (
           <div className="py-12 text-center text-zinc-500 text-xs font-mono">Carregando métricas...</div>
-        ) : habitos.length === 0 ? (
-          <div className="text-center py-8 text-zinc-500 text-xs">Sem hábitos para monitorar. Cadastre-os na tela de Checklist!</div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            {habitos.map((habit) => {
-              const doneCount = getCompletedCount(habit.id);
-              const target = habit.meta_semanal;
-              const percent = Math.min(100, Math.round((doneCount / target) * 100));
-              const isGoalMet = doneCount >= target;
+        ) : filteredHabits.length === 0 ? (
+          <div className="text-center py-8 text-zinc-500 text-xs">Sem hábitos nesta categoria para monitorar.</div>
+        ) : selectedCategory === 'Todos' ? (
+          /* Show grouped by category */
+          <div className="flex flex-col gap-6">
+            {['Saúde', 'Estudos', 'Mente', 'Trabalho'].map(cat => {
+              const groupHabits = filteredHabits.filter(h => h.categoria === cat);
+              if (groupHabits.length === 0) return null;
 
               return (
-                <div key={habit.id} className="group" id={`dashboard-habit-${habit.id}`}>
-                  {/* Label / Values Row */}
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="min-w-0 pr-2">
-                      <span className="text-sm font-semibold text-zinc-200 block truncate group-hover:text-white transition-colors">
-                        {habit.nome}
-                      </span>
-                      <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded border mt-0.5 font-mono ${getCategoryTagStyle(habit.categoria)}`}>
-                        {habit.categoria}
-                      </span>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className={`text-xs font-extrabold font-mono ${isGoalMet ? 'text-purple-400' : 'text-zinc-400'}`}>
-                        {doneCount} de {target} dias
-                      </span>
-                      <span className="text-[9px] block text-zinc-500 font-mono">
-                        {isGoalMet ? '🏆 Cumprida!' : `${percent}% completo`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Custom Track and Progress bar */}
-                  <div className="w-full h-3 bg-zinc-950 rounded-full border border-zinc-800 overflow-hidden relative p-0.5">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ease-out-back ${
-                        isGoalMet
-                          ? 'bg-gradient-to-r from-purple-500 to-fuchsia-400 shadow-sm shadow-purple-500/25'
-                          : 'bg-gradient-to-r from-purple-800 to-purple-600'
-                      }`}
-                      style={{ width: `${Math.max(4, percent)}%` }}
-                    />
+                <div key={cat} className="p-4 rounded-2xl bg-zinc-950/40 border border-zinc-850 flex flex-col gap-4">
+                  <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest flex items-center gap-2 font-mono border-b border-zinc-850 pb-1.5">
+                    {cat === 'Saúde' ? '💪 Saúde' : cat === 'Estudos' ? '📚 Estudos' : cat === 'Mente' ? '🧘 Mente' : '💼 Trabalho'}
+                  </h3>
+                  <div className="flex flex-col gap-5">
+                    {groupHabits.map(habit => renderHabitProgressItem(habit))}
                   </div>
                 </div>
               );
             })}
+          </div>
+        ) : (
+          /* Show filtered list directly */
+          <div className="flex flex-col gap-5">
+            {filteredHabits.map(habit => renderHabitProgressItem(habit))}
           </div>
         )}
       </div>
