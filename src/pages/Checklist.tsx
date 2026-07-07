@@ -1,5 +1,5 @@
-import { useState, useEffect, FormEvent, MouseEvent } from 'react';
-import { Plus, Calendar, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2, Edit2, ArrowUp, ArrowDown } from 'lucide-react';
+import React, { useState, useEffect, FormEvent, MouseEvent } from 'react';
+import { Plus, Calendar, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2, Edit2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, isSupabaseConfigured, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
 
@@ -43,11 +43,29 @@ export default function Checklist({ user }: ChecklistProps) {
   // Notification Banner (Success / Error states)
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  // Reordering states
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
   useEffect(() => {
     loadData();
   }, [selectedDate, user.username]);
 
   const sortHabitos = (habitsList: Habito[], username: string): Habito[] => {
+    // If we have explicit orders from the database, sort by them first
+    const hasOrdem = habitsList.some(h => h.ordem !== undefined && h.ordem !== null && h.ordem !== 0);
+    if (hasOrdem) {
+      return [...habitsList].sort((a, b) => {
+        const orderA = a.ordem !== undefined && a.ordem !== null ? a.ordem : 9999;
+        const orderB = b.ordem !== undefined && b.ordem !== null ? b.ordem : 9999;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return a.nome.localeCompare(b.nome);
+      });
+    }
+
+    // Secondary fallback to localStorage order index
     const customOrder: string[] = JSON.parse(localStorage.getItem(`habitracker_habitos_ordem_${username}`) || '[]');
     if (customOrder.length === 0) {
       return habitsList;
@@ -64,7 +82,7 @@ export default function Checklist({ user }: ChecklistProps) {
     });
   };
 
-  const handleMoveHabito = (habitId: string, direction: 'up' | 'down') => {
+  const handleMoveHabito = async (habitId: string, direction: 'up' | 'down') => {
     const index = habitos.findIndex(h => h.id === habitId);
     if (index === -1) return;
 
@@ -76,11 +94,51 @@ export default function Checklist({ user }: ChecklistProps) {
     newHabitos[index] = newHabitos[newIndex];
     newHabitos[newIndex] = temp;
 
+    // Set layout immediately for snappy feedback
     setHabitos(newHabitos);
 
     const newOrderIds = newHabitos.map(h => h.id);
     localStorage.setItem(`habitracker_habitos_ordem_${user.username}`, JSON.stringify(newOrderIds));
-    showBanner('Ordem atualizada!', 'success');
+    
+    try {
+      await dataService.updateHabitosOrdem(newOrderIds, user.username);
+      showBanner('Ordem atualizada no banco!', 'success');
+    } catch (err) {
+      console.error('Erro ao salvar ordem no banco:', err);
+      showBanner('Ordem atualizada localmente.', 'success');
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', index.toString());
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newHabitos = [...habitos];
+    const itemToMove = newHabitos[draggedIndex];
+    newHabitos.splice(draggedIndex, 1);
+    newHabitos.splice(index, 0, itemToMove);
+
+    setDraggedIndex(index);
+    setHabitos(newHabitos);
+  };
+
+  const handleDragEnd = async () => {
+    setDraggedIndex(null);
+    const newOrderIds = habitos.map(h => h.id);
+    localStorage.setItem(`habitracker_habitos_ordem_${user.username}`, JSON.stringify(newOrderIds));
+    try {
+      await dataService.updateHabitosOrdem(newOrderIds, user.username);
+    } catch (err) {
+      console.error('Erro ao salvar ordem no banco de dados:', err);
+    }
   };
 
   const loadData = async () => {
@@ -305,42 +363,75 @@ export default function Checklist({ user }: ChecklistProps) {
             </p>
           </div>
 
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-4.5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-transform active:scale-95 text-xs cursor-pointer shadow-lg shadow-purple-600/20 shrink-0"
-            id="btn-add-habit"
-          >
-            <Plus size={16} />
-            <span>Novo</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsReordering(!isReordering)}
+              className={`flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold transition-all text-xs cursor-pointer active:scale-95 border ${
+                isReordering
+                  ? 'bg-emerald-600 border-transparent text-white shadow-lg shadow-emerald-600/20'
+                  : 'bg-zinc-900 hover:bg-zinc-850 text-zinc-300 border-zinc-800/80 hover:border-zinc-700'
+              }`}
+            >
+              {isReordering ? (
+                <>
+                  <Check size={15} />
+                  <span>Pronto</span>
+                </>
+              ) : (
+                <>
+                  <GripVertical size={15} />
+                  <span>Reordenar</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-1.5 px-4.5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-transform active:scale-95 text-xs cursor-pointer shadow-lg shadow-purple-600/20 shrink-0"
+              id="btn-add-habit"
+            >
+              <Plus size={16} />
+              <span>Novo</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-          {/* Date Selector Banner */}
-        {/* Unified, full-clickable Date Selector Button/Card */}
-        <div className="relative flex items-center gap-3 p-3.5 px-4.5 rounded-2xl bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700/80 hover:bg-zinc-850/40 transition-all cursor-pointer w-full group">
-          <Calendar className="text-white group-hover:text-purple-400 shrink-0 transition-colors" size={18} />
+      {/* Restored Date Selector Row with plenty of margin bottom */}
+      <div className="flex items-center justify-between gap-2 mb-6">
+        {/* Left: Informative Date Info Banner */}
+        <div className="flex items-center gap-3 p-3 px-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex-1 min-w-0">
+          <Calendar className="text-purple-400 shrink-0" size={18} />
           <div className="flex flex-col min-w-0">
             <span className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase">DATA DE REGISTRO</span>
-            <span className="text-xs font-bold text-white truncate uppercase flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white truncate uppercase">
               {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', {
                 weekday: 'long',
                 day: 'numeric',
-                month: 'long',
-                year: 'numeric',
+                month: 'short',
               })}
-              <span className="text-[9px] text-zinc-500 font-normal lowercase font-sans opacity-60 group-hover:opacity-100 group-hover:text-purple-300 transition-opacity">(clique para alterar)</span>
             </span>
           </div>
-          {/* Transparent date input covering the entire banner to allow clicking anywhere */}
+        </div>
+
+        {/* Right: Highly Clickable Date Picker Selector Component */}
+        <div className="relative flex items-center gap-2 px-4 py-3.5 rounded-2xl bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850/40 transition-all cursor-pointer select-none shrink-0">
+          {/* Calendar icon in white for perfect visibility */}
+          <Calendar className="text-white shrink-0 text-purple-400" size={16} />
+          <span className="text-xs font-semibold text-zinc-200 font-mono">
+            {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: '2-digit'
+            })}
+          </span>
+          {/* Hidden/Transparent real input covering the wrapper to be naturally clicked */}
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             id="input-date-picker"
-            title="Selecione outra data"
           />
         </div>
       </div>
@@ -354,7 +445,83 @@ export default function Checklist({ user }: ChecklistProps) {
             Toque no botão "Novo" no canto superior direito para criar o seu primeiro hábito e começar a monitorar sua consistência!
           </p>
         </div>
+      ) : isReordering ? (
+        /* Drag-to-Reorder Mode UI */
+        <div className="flex flex-col gap-3">
+          {/* Reorder Mode Info Callout */}
+          <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex items-center justify-between gap-3 mb-2 animate-fade-in">
+            <div className="flex items-center gap-2.5">
+              <GripVertical className="text-purple-400 animate-pulse shrink-0" size={18} />
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">Modo de Reordenação Ativo</span>
+                <span className="text-[10px] text-zinc-400 leading-tight">
+                  Segure e arraste os hábitos ou toque nas setas para ajustar.
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsReordering(false)}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold font-mono transition-colors cursor-pointer"
+            >
+              Concluído
+            </button>
+          </div>
+
+          {/* List of Draggable Items */}
+          <div className="flex flex-col gap-2.5">
+            {habitos.map((habit, index) => (
+              <div
+                key={habit.id}
+                draggable={true}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center justify-between p-4 rounded-2xl border transition-all select-none ${
+                  draggedIndex === index
+                    ? 'bg-purple-950/40 border-purple-500/80 scale-[1.01] shadow-lg shadow-purple-500/10 opacity-80'
+                    : 'bg-zinc-900 border-zinc-800/80 hover:border-zinc-700/60 cursor-grab active:cursor-grabbing'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Drag Handle Icon */}
+                  <div className="text-zinc-500 group-hover:text-zinc-300 p-1 shrink-0">
+                    <GripVertical size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-sm font-bold text-zinc-200 block truncate">
+                      {habit.nome}
+                    </span>
+                    <span className={`inline-block text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border mt-1 font-bold ${getCategoryBadgeColor(habit.categoria)}`}>
+                      {habit.categoria}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Touch fallback arrow buttons (strictly inside the Reorder mode) */}
+                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleMoveHabito(habit.id, 'up')}
+                    disabled={index === 0}
+                    className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-850 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                    title="Mover para cima"
+                  >
+                    <ArrowUp size={14} />
+                  </button>
+                  <button
+                    onClick={() => handleMoveHabito(habit.id, 'down')}
+                    disabled={index === habitos.length - 1}
+                    className="p-2 rounded-xl bg-zinc-950/60 border border-zinc-850 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
+                    title="Mover para baixo"
+                  >
+                    <ArrowDown size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
+        /* Regular checklist - completely arrowless and uncluttered! */
         <div className="flex flex-col gap-4">
           {habitos.map((habit) => {
             const isCompleted = registros[habit.id]?.concluido || false;
@@ -423,26 +590,6 @@ export default function Checklist({ user }: ChecklistProps) {
 
                   {/* Right side expand / edit / trash tools */}
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {/* Move Up */}
-                    <button
-                      onClick={() => handleMoveHabito(habit.id, 'up')}
-                      disabled={loadingToggles[habit.id] || deletingHabits[habit.id] || habitos[0]?.id === habit.id}
-                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
-                      title="Mover para cima"
-                    >
-                      <ArrowUp size={15} />
-                    </button>
-
-                    {/* Move Down */}
-                    <button
-                      onClick={() => handleMoveHabito(habit.id, 'down')}
-                      disabled={loadingToggles[habit.id] || deletingHabits[habit.id] || habitos[habitos.length - 1]?.id === habit.id}
-                      className="p-2 rounded-xl bg-zinc-950/40 border border-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed"
-                      title="Mover para baixo"
-                    >
-                      <ArrowDown size={15} />
-                    </button>
-
                     {/* Expand Detail toggle */}
                     <button
                       onClick={() => setExpandedHabitId(isExpanded ? null : habit.id)}

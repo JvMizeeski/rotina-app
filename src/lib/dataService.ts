@@ -211,10 +211,19 @@ export const dataService = {
         const { data, error } = await supabase
           .from('habitos')
           .select('*')
-          .eq('usuario_id', usuarioId)
-          .order('nome', { ascending: true });
+          .eq('usuario_id', usuarioId);
         if (error) throw error;
-        return data || [];
+        
+        // Return sorted: if 'ordem' field is present, sort by it first, then by 'nome'
+        const rawList = data || [];
+        return rawList.sort((a: any, b: any) => {
+          const orderA = a.ordem !== undefined && a.ordem !== null ? a.ordem : 0;
+          const orderB = b.ordem !== undefined && b.ordem !== null ? b.ordem : 0;
+          if (orderA !== orderB) {
+            return orderA - orderB;
+          }
+          return a.nome.localeCompare(b.nome);
+        });
       } catch (err) {
         console.error('Erro ao buscar hábitos no Supabase. Fallback para LocalStorage:', err);
       }
@@ -224,9 +233,10 @@ export const dataService = {
     const habitsStr = localStorage.getItem(`${LOCAL_HABITS_KEY}_${usuarioId}`);
     if (!habitsStr) {
       // Seed with default habits for this specific user
-      const userSample = SAMPLE_HABITS.map(h => ({
+      const userSample = SAMPLE_HABITS.map((h, i) => ({
         ...h,
         id: `local_${usuarioId}_${h.id}`,
+        ordem: i,
         usuario_id: usuarioId
       }));
       localStorage.setItem(`${LOCAL_HABITS_KEY}_${usuarioId}`, JSON.stringify(userSample));
@@ -236,22 +246,43 @@ export const dataService = {
   },
 
   async addHabito(nome: string, categoria: string, meta_semanal: number, usuarioId: string): Promise<Habito> {
+    const habits = await this.getHabitos(usuarioId);
+    
+    // Determine the next order index
+    const maxOrdem = habits.reduce((max, h) => {
+      const o = h.ordem !== undefined && h.ordem !== null ? h.ordem : 0;
+      return o > max ? o : max;
+    }, 0);
+    const nextOrdem = habits.length > 0 ? maxOrdem + 1 : 0;
+
     const newHabit: Habito = {
       id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9),
       nome,
       categoria,
       meta_semanal,
+      ordem: nextOrdem,
       usuario_id: usuarioId
     };
 
     if (isSupabaseConfigured && supabase) {
       try {
+        // Try inserting with 'ordem' field
         const { data, error } = await supabase
           .from('habitos')
-          .insert([{ nome, categoria, meta_semanal, usuario_id: usuarioId }])
+          .insert([{ nome, categoria, meta_semanal, ordem: nextOrdem, usuario_id: usuarioId }])
           .select()
           .single();
-        if (error) throw error;
+        if (error) {
+          console.warn('Erro ao inserir com coluna ordem (possivelmente ela nao existe ainda). Fazendo fallback sem ordem:', error);
+          // Fallback insert without the 'ordem' field
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('habitos')
+            .insert([{ nome, categoria, meta_semanal, usuario_id: usuarioId }])
+            .select()
+            .single();
+          if (fallbackError) throw fallbackError;
+          if (fallbackData) return fallbackData;
+        }
         if (data) return data;
       } catch (err) {
         console.error('Erro ao salvar hábito no Supabase. Fallback para LocalStorage:', err);
@@ -259,7 +290,6 @@ export const dataService = {
     }
 
     // LocalStorage write
-    const habits = await this.getHabitos(usuarioId);
     const updatedHabits = [...habits, newHabit];
     localStorage.setItem(`${LOCAL_HABITS_KEY}_${usuarioId}`, JSON.stringify(updatedHabits));
     return newHabit;
@@ -287,6 +317,46 @@ export const dataService = {
     const updatedHabits = habits.map(h => h.id === id ? { ...h, nome, categoria, meta_semanal } : h);
     localStorage.setItem(`${LOCAL_HABITS_KEY}_${usuarioId}`, JSON.stringify(updatedHabits));
     return { id, nome, categoria, meta_semanal, usuario_id: usuarioId };
+  },
+
+  async updateHabitosOrdem(habitoIds: string[], usuarioId: string): Promise<boolean> {
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Run updates for each habit's order index in parallel
+        const promises = habitoIds.map((id, index) => {
+          return supabase
+            .from('habitos')
+            .update({ ordem: index })
+            .eq('id', id)
+            .eq('usuario_id', usuarioId);
+        });
+        const results = await Promise.all(promises);
+        const hasError = results.some(res => res.error);
+        if (hasError) {
+          console.warn('Algumas atualizações de ordem falharam no Supabase. Talvez a coluna ordem não exista.');
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error('Erro ao atualizar ordem de hábitos no Supabase:', err);
+        return false;
+      }
+    }
+
+    // LocalStorage fallback update
+    const habitsStr = localStorage.getItem(`${LOCAL_HABITS_KEY}_${usuarioId}`);
+    if (habitsStr) {
+      const habits: Habito[] = JSON.parse(habitsStr);
+      const updatedHabits = habits.map(h => {
+        const index = habitoIds.indexOf(h.id);
+        return {
+          ...h,
+          ordem: index !== -1 ? index : 999
+        };
+      }).sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
+      localStorage.setItem(`${LOCAL_HABITS_KEY}_${usuarioId}`, JSON.stringify(updatedHabits));
+    }
+    return true;
   },
 
   async deleteHabito(id: string, usuarioId: string): Promise<boolean> {

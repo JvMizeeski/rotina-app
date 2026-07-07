@@ -50,6 +50,7 @@ export interface Habito {
   nome: string;
   categoria: string;
   meta_semanal: number; // number of times per week
+  ordem?: number;
   usuario_id?: string;
   created_at?: string;
 }
