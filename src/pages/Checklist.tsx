@@ -162,11 +162,47 @@ export default function Checklist({ user }: ChecklistProps) {
     }
   };
 
-  const showBanner = (text: string, type: 'success' | 'error' = 'success') => {
+  // Ref to store banner timer to cleanly handle overlapping toasts
+  const notificationTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const showBanner = (text: string, type: 'success' | 'error' = 'success', durationMs = 3000) => {
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
     setNotification({ text, type });
-    // Auto-clear notification after 3 seconds
-    const timer = setTimeout(() => setNotification(null), 3000);
-    return () => clearTimeout(timer);
+    notificationTimerRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimerRef.current = null;
+    }, durationMs);
+  };
+
+  const checkWeeklyGoalCompletion = async (habitId: string) => {
+    try {
+      const d = new Date(selectedDate + 'T12:00:00');
+      const currentDay = d.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() + distanceToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      
+      const startStr = getLocalDateString(monday);
+      const endStr = getLocalDateString(sunday);
+      
+      const weekRegs = await dataService.getRegistros(startStr, endStr, user.username);
+      const habitRegs = weekRegs.filter(r => r.habito_id === habitId && r.concluido);
+      const completedCount = habitRegs.length;
+      
+      const currentHabit = habitos.find(h => h.id === habitId);
+      if (currentHabit) {
+        const target = currentHabit.meta_semanal;
+        if (completedCount === target) {
+          showBanner(`🏆 Parabéns! Você cumpriu a meta semanal do hábito "${currentHabit.nome}" (${target}/${target} vezes)! Que consistência incrível! 🌟`, 'success', 5000);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao verificar meta semanal:', err);
+    }
   };
 
   const handleToggleConcluido = async (habitId: string) => {
@@ -210,6 +246,8 @@ export default function Checklist({ user }: ChecklistProps) {
       
       if (!isCurrentlyDone) {
         showBanner('Hábito concluído! Bom trabalho! 🎉', 'success');
+        // Check weekly goal completion asynchronously
+        await checkWeeklyGoalCompletion(habitId);
       } else {
         showBanner('Hábito desmarcado.', 'success');
       }
@@ -232,6 +270,8 @@ export default function Checklist({ user }: ChecklistProps) {
       comentario: ''
     };
 
+    const wasConcluidoBefore = currentReg.concluido;
+
     const updatedReg = {
       ...currentReg,
       horas_dedicadas: horas,
@@ -248,6 +288,11 @@ export default function Checklist({ user }: ChecklistProps) {
       }));
       setExpandedHabitId(null);
       showBanner('Detalhes salvos com sucesso! 💪', 'success');
+
+      if (!wasConcluidoBefore) {
+        // Since we auto-concluded, check weekly goal completion
+        await checkWeeklyGoalCompletion(habitId);
+      }
     } catch (err) {
       console.error(err);
       showBanner('Erro ao salvar detalhes.', 'error');

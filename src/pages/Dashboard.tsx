@@ -11,6 +11,7 @@ export default function Dashboard({ user }: { user: any }) {
   const [weekRange, setWeekRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+  const [activePreset, setActivePreset] = useState<'week' | 'month' | 'last30' | 'custom'>('week');
 
   useEffect(() => {
     // Calculate current week (Monday to Sunday)
@@ -46,6 +47,65 @@ export default function Dashboard({ user }: { user: any }) {
     }
   };
 
+  const handleApplyPreset = (preset: 'week' | 'month' | 'last30') => {
+    setActivePreset(preset);
+    const today = new Date();
+    let startStr = '';
+    let endStr = '';
+
+    if (preset === 'week') {
+      const currentDay = today.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + distanceToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      
+      startStr = getLocalDateString(monday);
+      endStr = getLocalDateString(sunday);
+    } else if (preset === 'month') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      
+      startStr = getLocalDateString(firstDay);
+      endStr = getLocalDateString(lastDay);
+    } else if (preset === 'last30') {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 29);
+      
+      startStr = getLocalDateString(start);
+      endStr = getLocalDateString(today);
+    }
+
+    setWeekRange({ start: startStr, end: endStr });
+    loadData(startStr, endStr);
+  };
+
+  const handleCustomDateChange = (type: 'start' | 'end', value: string) => {
+    if (!value) return;
+    setActivePreset('custom');
+    
+    setWeekRange(prev => {
+      const updated = { ...prev, [type]: value };
+      if (type === 'start' && updated.end && value > updated.end) {
+        updated.end = value;
+      } else if (type === 'end' && updated.start && value < updated.start) {
+        updated.start = value;
+      }
+      
+      loadData(updated.start, updated.end);
+      return updated;
+    });
+  };
+
+  const getDaysInRange = () => {
+    if (!weekRange.start || !weekRange.end) return 7;
+    const s = new Date(weekRange.start + 'T12:00:00');
+    const e = new Date(weekRange.end + 'T12:00:00');
+    const diffTime = Math.abs(e.getTime() - s.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
+
   // Filter habits according to selected category
   const filteredHabits = selectedCategory === 'Todos'
     ? habitos
@@ -67,9 +127,21 @@ export default function Dashboard({ user }: { user: any }) {
   // Helper for overall checklist completion rate for filtered habits
   const getOverallCompletionRate = () => {
     if (filteredHabits.length === 0) return 0;
-    const totalPossibleConcl = filteredHabits.reduce((acc, h) => acc + h.meta_semanal, 0);
+    const days = getDaysInRange();
+    const factor = days / 7;
+
+    const totalPossibleConcl = filteredHabits.reduce((acc, h) => {
+      const targetForRange = Math.max(1, Math.round(h.meta_semanal * factor));
+      return acc + targetForRange;
+    }, 0);
+
     if (totalPossibleConcl === 0) return 0;
-    const totalDone = filteredHabits.reduce((acc, h) => acc + Math.min(getCompletedCount(h.id), h.meta_semanal), 0);
+
+    const totalDone = filteredHabits.reduce((acc, h) => {
+      const targetForRange = Math.max(1, Math.round(h.meta_semanal * factor));
+      return acc + Math.min(getCompletedCount(h.id), targetForRange);
+    }, 0);
+
     return Math.round((totalDone / totalPossibleConcl) * 100);
   };
 
@@ -86,7 +158,9 @@ export default function Dashboard({ user }: { user: any }) {
   // Helper to render a habit item
   const renderHabitProgressItem = (habit: Habito) => {
     const doneCount = getCompletedCount(habit.id);
-    const target = habit.meta_semanal;
+    const days = getDaysInRange();
+    const factor = days / 7;
+    const target = Math.max(1, Math.round(habit.meta_semanal * factor));
     const percent = Math.min(100, Math.round((doneCount / target) * 100));
     const isGoalMet = doneCount >= target;
 
@@ -131,11 +205,83 @@ export default function Dashboard({ user }: { user: any }) {
     <div className="pb-24 animate-fade-in" id="page-dashboard">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-white">Progresso Semanal</h1>
-        <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1 font-mono uppercase">
-          <Calendar size={12} className="text-purple-400" />
-          Período: {weekRange.start ? new Date(weekRange.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }) : ''} - {weekRange.end ? new Date(weekRange.end + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }) : ''}
+        <h1 className="text-2xl font-black tracking-tight text-white font-sans">Estatísticas & Progresso</h1>
+        <p className="text-xs text-zinc-400 mt-1.5 flex items-center gap-1.5 font-mono uppercase">
+          <Calendar size={13} className="text-purple-400" />
+          Período: {weekRange.start ? new Date(weekRange.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''} - {weekRange.end ? new Date(weekRange.end + 'T12:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
         </p>
+      </div>
+
+      {/* Period Selector Card */}
+      <div className="p-4.5 rounded-2xl bg-zinc-900 border border-zinc-800/80 mb-6 flex flex-col gap-4">
+        {/* Preset buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleApplyPreset('week')}
+            className={`flex-1 px-3 py-2 rounded-xl text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer border text-center ${
+              activePreset === 'week'
+                ? 'bg-purple-600 border-transparent text-white shadow-lg shadow-purple-600/10'
+                : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+            }`}
+          >
+            🗓️ Esta Semana
+          </button>
+          <button
+            onClick={() => handleApplyPreset('month')}
+            className={`flex-1 px-3 py-2 rounded-xl text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer border text-center ${
+              activePreset === 'month'
+                ? 'bg-purple-600 border-transparent text-white shadow-lg shadow-purple-600/10'
+                : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+            }`}
+          >
+            📅 Este Mês
+          </button>
+          <button
+            onClick={() => handleApplyPreset('last30')}
+            className={`flex-1 px-3 py-2 rounded-xl text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer border text-center ${
+              activePreset === 'last30'
+                ? 'bg-purple-600 border-transparent text-white shadow-lg shadow-purple-600/10'
+                : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+            }`}
+          >
+            🚀 30 Dias
+          </button>
+        </div>
+
+        {/* Custom date range inputs */}
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800/40">
+          <div className="relative">
+            <label className="block text-[9px] font-bold text-zinc-500 font-mono uppercase mb-1 tracking-wider">Início</label>
+            <div className="relative flex items-center bg-zinc-950 border border-zinc-850 rounded-xl hover:border-zinc-700 transition-colors p-2.5 cursor-pointer">
+              <Calendar size={13} className="text-zinc-400 mr-2 shrink-0" />
+              <span className="text-xs font-semibold text-zinc-200 font-mono">
+                {weekRange.start ? new Date(weekRange.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
+              </span>
+              <input
+                type="date"
+                value={weekRange.start}
+                onChange={(e) => handleCustomDateChange('start', e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+            </div>
+          </div>
+
+          <div className="relative">
+            <label className="block text-[9px] font-bold text-zinc-500 font-mono uppercase mb-1 tracking-wider">Fim</label>
+            <div className="relative flex items-center bg-zinc-950 border border-zinc-850 rounded-xl hover:border-zinc-700 transition-colors p-2.5 cursor-pointer">
+              <Calendar size={13} className="text-zinc-400 mr-2 shrink-0" />
+              <span className="text-xs font-semibold text-zinc-200 font-mono">
+                {weekRange.end ? new Date(weekRange.end + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
+              </span>
+              <input
+                type="date"
+                value={weekRange.end}
+                onChange={(e) => handleCustomDateChange('end', e.target.value)}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Category Filter Badges */}
@@ -166,7 +312,7 @@ export default function Dashboard({ user }: { user: any }) {
             <Award size={22} />
             <span>{getOverallCompletionRate()}%</span>
           </div>
-          <span className="text-[9px] text-zinc-500 leading-tight">Da meta total semanal</span>
+          <span className="text-[9px] text-zinc-500 leading-tight">No período selecionado</span>
         </div>
 
         <div className="p-4.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-center flex flex-col justify-between shadow-lg">
@@ -175,7 +321,7 @@ export default function Dashboard({ user }: { user: any }) {
             <Clock size={22} />
             <span>{formatHorasDedicadas(getTotalHours())}</span>
           </div>
-          <span className="text-[9px] text-zinc-500 leading-tight">Focadas esta semana</span>
+          <span className="text-[9px] text-zinc-500 leading-tight">Focadas no período</span>
         </div>
       </div>
 
