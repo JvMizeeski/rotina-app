@@ -51,6 +51,19 @@ export default function Checklist({ user }: ChecklistProps) {
     loadData();
   }, [selectedDate, user.username]);
 
+  const isAnyModalOpen = isAddModalOpen || !!editingHabit || !!pendingToggleHabitId;
+
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isAnyModalOpen]);
+
   const sortHabitos = (habitsList: Habito[], username: string): Habito[] => {
     // If we have explicit orders from the database, sort by them first
     const hasOrdem = habitsList.some(h => h.ordem !== undefined && h.ordem !== null && h.ordem !== 0);
@@ -396,7 +409,8 @@ export default function Checklist({ user }: ChecklistProps) {
   };
 
   return (
-    <div className="pb-24 animate-fade-in" id="page-checklist">
+    <>
+      <div className="pb-24 animate-fade-in" id="page-checklist">
       {/* Top Welcome / Header Section */}
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -685,6 +699,7 @@ export default function Checklist({ user }: ChecklistProps) {
           })}
         </div>
       )}
+      </div>
 
       {/* Floating Notification Toast */}
       {notification && (
@@ -702,8 +717,8 @@ export default function Checklist({ user }: ChecklistProps) {
 
       {/* Add Habit Overlay Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800/80 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-slide-up">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800/80 rounded-3xl p-6 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-white uppercase tracking-wider">Adicionar Novo Hábito</h2>
               <button
@@ -776,8 +791,8 @@ export default function Checklist({ user }: ChecklistProps) {
 
       {/* Edit Habit Overlay Modal */}
       {editingHabit && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800/80 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-slide-up">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800/80 rounded-3xl p-6 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-white uppercase tracking-wider">Editar Hábito</h2>
               <button
@@ -858,8 +873,8 @@ export default function Checklist({ user }: ChecklistProps) {
 
       {/* Quick Completion Time Confirmation Modal */}
       {pendingToggleHabitId && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-zinc-900 border border-zinc-800/80 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-slide-up">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-zinc-900 border border-zinc-800/80 rounded-3xl p-6 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5 font-mono">
                 <Clock className="text-purple-400" size={16} /> Tempo de Atividade
@@ -964,7 +979,7 @@ export default function Checklist({ user }: ChecklistProps) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

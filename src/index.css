@@ -18,3 +18,16 @@
   animation: slideUp 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
 }
 
+/* Mobile Touch Optimization to prevent double-tap zoom and delays */
+button, select, input, textarea, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Ensure inputs on iOS do not cause auto-zoom on focus by keeping baseline sizes readable */
+@media screen and (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+
