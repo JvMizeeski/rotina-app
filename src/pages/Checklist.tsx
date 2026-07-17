@@ -354,6 +354,7 @@ export default function Checklist({ user }: ChecklistProps) {
         editMetaSemanal,
         user.username
       );
+
       setHabitos(prev => prev.map(h => h.id === editingHabit.id ? updated : h));
       setEditingHabit(null);
       showBanner('Hábito editado com sucesso! ✏️', 'success');
