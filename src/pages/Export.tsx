@@ -1,27 +1,57 @@
 import { useState } from 'react';
-import { FileText, Copy, Check, Download, Brain, HelpCircle, Sparkles } from 'lucide-react';
+import { FileText, Copy, Check, Download, Brain, HelpCircle, Sparkles, Calendar } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
 
 export default function Export({ user }: { user: any }) {
+  const getInitialDates = () => {
+    const today = new Date();
+    const past7Days = new Date();
+    past7Days.setDate(today.getDate() - 6);
+    return {
+      today: getLocalDateString(today),
+      past7: getLocalDateString(past7Days)
+    };
+  };
+
+  const dates = getInitialDates();
+  const [startDate, setStartDate] = useState<string>(dates.past7);
+  const [endDate, setEndDate] = useState<string>(dates.today);
   const [markdown, setMarkdown] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const applyPreset = (preset: '7' | '15' | '30' | 'month') => {
+    const today = new Date();
+    setEndDate(getLocalDateString(today));
+
+    if (preset === '7') {
+      const past = new Date();
+      past.setDate(today.getDate() - 6);
+      setStartDate(getLocalDateString(past));
+    } else if (preset === '15') {
+      const past = new Date();
+      past.setDate(today.getDate() - 14);
+      setStartDate(getLocalDateString(past));
+    } else if (preset === '30') {
+      const past = new Date();
+      past.setDate(today.getDate() - 29);
+      setStartDate(getLocalDateString(past));
+    } else if (preset === 'month') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      setStartDate(getLocalDateString(firstDay));
+    }
+  };
 
   const generateReport = async () => {
     try {
       setLoading(true);
       setCopied(false);
 
-      // Get last 7 days date range
-      const today = new Date();
-      const pastDate = new Date();
-      pastDate.setDate(today.getDate() - 6); // past 7 days inclusive
+      const startStr = startDate;
+      const endStr = endDate;
 
-      const startStr = getLocalDateString(pastDate);
-      const endStr = getLocalDateString(today);
-
-      // Fetch habits and registers for last 7 days
+      // Fetch habits and registers for selected range
       const [habitos, registros] = await Promise.all([
         dataService.getHabitos(user.username),
         dataService.getRegistros(startStr, endStr, user.username)
@@ -33,7 +63,7 @@ export default function Export({ user }: { user: any }) {
       }
 
       // Format report header
-      let md = `# 📊 RELATÓRIO SEMANAL DE HÁBITOS E ROTINA\n`;
+      let md = `# 📊 RELATÓRIO DE HÁBITOS E ROTINA\n`;
       md += `**Usuário:** ${user.display_name} (@${user.username})\n`;
       md += `**Período:** ${new Date(startStr + 'T12:00:00').toLocaleDateString('pt-BR')} até ${new Date(endStr + 'T12:00:00').toLocaleDateString('pt-BR')}\n`;
       md += `**Gerado em:** ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\n`;
@@ -43,7 +73,7 @@ export default function Export({ user }: { user: any }) {
       const totalHours = registros.reduce((sum, r) => sum + (Number(r.horas_dedicadas) || 0), 0);
 
       md += `## 📈 RESUMO GERAL\n`;
-      md += `- **Check-ins Concluídos:** ${completedRegs.length} vezes nesta semana\n`;
+      md += `- **Check-ins Concluídos:** ${completedRegs.length} vezes no período selecionado\n`;
       md += `- **Tempo Total Focado:** ${formatHorasDedicadas(totalHours)}\n\n`;
 
       // Category breakdown
@@ -53,10 +83,9 @@ export default function Export({ user }: { user: any }) {
         const habitRegs = registros.filter(r => r.habito_id === habit.id);
         const doneCount = habitRegs.filter(r => r.concluido).length;
         const target = habit.meta_semanal;
-        const percent = target > 0 ? Math.round((doneCount / target) * 100) : 0;
         
         md += `### 🔹 ${habit.nome} [${habit.categoria}]\n`;
-        md += `- **Meta Semanal:** ${target} vezes | **Realizado:** ${doneCount} vezes (${percent}%)\n`;
+        md += `- **Realizado:** ${doneCount} vezes no período (Meta semanal padrão: ${target} vezes)\n`;
         
         const doneRegs = habitRegs.filter(r => r.concluido);
         if (doneRegs.length > 0) {
@@ -70,14 +99,14 @@ export default function Export({ user }: { user: any }) {
             }
           });
         } else {
-          md += `- *Nenhum check-in registrado para este hábito nos últimos 7 dias.*\n`;
+          md += `- *Nenhum check-in registrado para este hábito neste período.*\n`;
         }
         md += `\n`;
       });
 
       // Prompt section for Gemini AI
       md += `---\n`;
-      md += `## 			 SOLICITAÇÃO DE ANÁLISE IA (COPIE COM O TEXTO ACIMA)\n`;
+      md += `## 🤖 SOLICITAÇÃO DE ANÁLISE IA (COPIE COM O TEXTO ACIMA)\n`;
       md += `*Olá Gemini! Analise o meu relatório de rotina e hábitos acima. Identifique padrões de comportamento, gargalos de produtividade, consistência no tempo de dedicação, e me recomende 3 ações práticas personalizadas para otimizar minha consistência na próxima semana.*`;
 
       setMarkdown(md);
@@ -111,16 +140,74 @@ export default function Export({ user }: { user: any }) {
         <FileText className="text-purple-400 mb-3" size={32} />
         <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">Exportação para Inteligência Artificial</h2>
         <p className="text-xs text-zinc-400 mt-1 max-w-xs leading-relaxed">
-          Nossa engine compila todas as métricas semanais e anotações subjetivas em um padrão consolidado de alta performance.
+          Nossa engine compila todas as métricas, hábitos e anotações subjetivas em um padrão consolidado de alta performance.
         </p>
         
+        {/* Date Range Selector */}
+        <div className="w-full mt-6 pt-5 border-t border-zinc-800 text-left">
+          <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-bold uppercase tracking-wider font-mono mb-3">
+            <Calendar size={12} className="text-purple-400" />
+            <span>Período de Análise</span>
+          </div>
+
+          {/* Quick Presets */}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            <button
+              onClick={() => applyPreset('7')}
+              className="px-2.5 py-1.5 rounded-lg text-[9px] font-bold font-mono border bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all cursor-pointer"
+            >
+              Últimos 7 dias
+            </button>
+            <button
+              onClick={() => applyPreset('15')}
+              className="px-2.5 py-1.5 rounded-lg text-[9px] font-bold font-mono border bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all cursor-pointer"
+            >
+              Últimos 15 dias
+            </button>
+            <button
+              onClick={() => applyPreset('30')}
+              className="px-2.5 py-1.5 rounded-lg text-[9px] font-bold font-mono border bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all cursor-pointer"
+            >
+              Últimos 30 dias
+            </button>
+            <button
+              onClick={() => applyPreset('month')}
+              className="px-2.5 py-1.5 rounded-lg text-[9px] font-bold font-mono border bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all cursor-pointer"
+            >
+              Este Mês
+            </button>
+          </div>
+
+          {/* Date Picker Inputs */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono mb-1">Data Inicial</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-zinc-200 focus:outline-none focus:border-purple-500 text-xs font-semibold cursor-pointer"
+              />
+            </div>
+            <div>
+              <label className="block text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono mb-1">Data Final</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-zinc-200 focus:outline-none focus:border-purple-500 text-xs font-semibold cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+
         <button
           onClick={generateReport}
           disabled={loading}
           className="w-full py-3.5 rounded-2xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all active:scale-98 mt-5 text-xs uppercase tracking-wider font-mono shadow-lg shadow-purple-600/15 cursor-pointer disabled:opacity-50"
           id="btn-generate-report"
         >
-          {loading ? 'Compilando Métricas...' : 'Gerar Relatório Semanal'}
+          {loading ? 'Compilando Métricas...' : 'Gerar Relatório'}
         </button>
       </div>
 
