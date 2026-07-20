@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calendar, Award, Star, Clock, Sparkles } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';

@@ -30,4 +30,19 @@ button, select, input, textarea, a, [role="button"] {
   }
 }
 
+/* Make the entire date input area trigger the calendar picker on click */
+input[type="date"]:not(.absolute) {
+  position: relative;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+
 

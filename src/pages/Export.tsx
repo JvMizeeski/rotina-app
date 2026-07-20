@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { FileText, Copy, Check, Download, Brain, HelpCircle, Sparkles, Calendar } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
@@ -182,21 +182,33 @@ export default function Export({ user }: { user: any }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono mb-1">Data Inicial</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-zinc-200 focus:outline-none focus:border-purple-500 text-xs font-semibold cursor-pointer"
-              />
+              <div className="relative flex items-center bg-zinc-950 border border-zinc-800/80 hover:border-zinc-700 rounded-xl transition-colors p-2.5 cursor-pointer">
+                <Calendar size={13} className="text-zinc-400 mr-2 shrink-0" />
+                <span className="text-xs font-semibold text-zinc-200 font-mono">
+                  {startDate ? new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
+                </span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-[9px] text-zinc-500 font-bold uppercase tracking-wider font-mono mb-1">Data Final</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-zinc-200 focus:outline-none focus:border-purple-500 text-xs font-semibold cursor-pointer"
-              />
+              <div className="relative flex items-center bg-zinc-950 border border-zinc-800/80 hover:border-zinc-700 rounded-xl transition-colors p-2.5 cursor-pointer">
+                <Calendar size={13} className="text-zinc-400 mr-2 shrink-0" />
+                <span className="text-xs font-semibold text-zinc-200 font-mono">
+                  {endDate ? new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
+                </span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+              </div>
             </div>
           </div>
         </div>

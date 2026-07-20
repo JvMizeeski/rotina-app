@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, MouseEvent } from 'react';
+import React, { useState, useEffect, FormEvent, MouseEvent, useRef } from 'react';
 import { Plus, Calendar, BookOpen, Clock, Check, ChevronDown, ChevronUp, Trash2, Edit2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import { dataService } from '../lib/dataService';
 import { Habito, RegistroDiario, isSupabaseConfigured, formatHorasDedicadas, getLocalDateString } from '../lib/supabase';
@@ -455,9 +455,9 @@ export default function Checklist({ user }: ChecklistProps) {
       </div>
 
       {/* Restored Date Selector Row with plenty of margin bottom */}
-      <div className="flex items-center justify-between gap-2 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-6">
         {/* Left: Informative Date Info Banner */}
-        <div className="flex items-center gap-3 p-3 px-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex-1 min-w-0">
+        <div className="flex items-center gap-3 p-3 px-4 rounded-2xl bg-zinc-900 border border-zinc-800/80 w-full sm:flex-1 min-w-0">
           <Calendar className="text-purple-400 shrink-0" size={18} />
           <div className="flex flex-col min-w-0">
             <span className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase">DATA DE REGISTRO</span>
@@ -472,7 +472,7 @@ export default function Checklist({ user }: ChecklistProps) {
         </div>
 
         {/* Right: Highly Clickable Date Picker Selector Component */}
-        <div className="relative flex items-center gap-2 px-4 py-3.5 rounded-2xl bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850/40 transition-all cursor-pointer select-none shrink-0">
+        <div className="relative flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl bg-zinc-900 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850/40 transition-all cursor-pointer select-none w-full sm:w-auto sm:shrink-0">
           {/* Calendar icon in white for perfect visibility */}
           <Calendar className="text-white shrink-0 text-purple-400" size={16} />
           <span className="text-xs font-semibold text-zinc-200 font-mono">
