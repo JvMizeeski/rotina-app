@@ -297,7 +297,7 @@ export default function Dashboard({ user }: { user: any }) {
             className={`flex-1 px-3 py-2 rounded-xl text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
               activePreset === 'week'
                 ? 'bg-purple-600 border-transparent text-white shadow-lg shadow-purple-600/10'
-                : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                : 'bg-zinc-950 border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
             }`}
           >
             {getCalendarIcon("w-3.5 h-3.5 shrink-0")}
@@ -308,7 +308,7 @@ export default function Dashboard({ user }: { user: any }) {
             className={`flex-1 px-3 py-2 rounded-xl text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
               activePreset === 'month'
                 ? 'bg-purple-600 border-transparent text-white shadow-lg shadow-purple-600/10'
-                : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                : 'bg-zinc-950 border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
             }`}
           >
             {getCalendarIcon("w-3.5 h-3.5 shrink-0")}
@@ -319,7 +319,7 @@ export default function Dashboard({ user }: { user: any }) {
             className={`flex-1 px-3 py-2 rounded-xl text-[10px] font-bold font-mono tracking-wider uppercase transition-all cursor-pointer border flex items-center justify-center gap-1.5 ${
               activePreset === 'last30'
                 ? 'bg-purple-600 border-transparent text-white shadow-lg shadow-purple-600/10'
-                : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                : 'bg-zinc-950 border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
             }`}
           >
             {getCalendarIcon("w-3.5 h-3.5 shrink-0")}
@@ -331,7 +331,7 @@ export default function Dashboard({ user }: { user: any }) {
         <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800/40">
           <div className="relative">
             <label className="block text-[9px] font-bold text-zinc-500 font-mono uppercase mb-1 tracking-wider">Início</label>
-            <div className="relative flex items-center bg-zinc-950 border border-zinc-850 rounded-xl hover:border-zinc-700 transition-colors p-2.5 cursor-pointer">
+            <div className="relative flex items-center bg-zinc-950 border border-zinc-800/60 rounded-xl hover:border-zinc-700 transition-colors p-2.5 cursor-pointer">
               {getCalendarIcon("text-zinc-400 mr-2 shrink-0 w-[13px] h-[13px]")}
               <span className="text-xs font-semibold text-zinc-200 font-mono">
                 {weekRange.start ? new Date(weekRange.start + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
@@ -347,7 +347,7 @@ export default function Dashboard({ user }: { user: any }) {
 
           <div className="relative">
             <label className="block text-[9px] font-bold text-zinc-500 font-mono uppercase mb-1 tracking-wider">Fim</label>
-            <div className="relative flex items-center bg-zinc-950 border border-zinc-850 rounded-xl hover:border-zinc-700 transition-colors p-2.5 cursor-pointer">
+            <div className="relative flex items-center bg-zinc-950 border border-zinc-800/60 rounded-xl hover:border-zinc-700 transition-colors p-2.5 cursor-pointer">
               {getCalendarIcon("text-zinc-400 mr-2 shrink-0 w-[13px] h-[13px]")}
               <span className="text-xs font-semibold text-zinc-200 font-mono">
                 {weekRange.end ? new Date(weekRange.end + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
@@ -425,8 +425,8 @@ export default function Dashboard({ user }: { user: any }) {
               if (groupHabits.length === 0) return null;
 
               return (
-                <div key={cat} className="p-4 rounded-2xl bg-zinc-950/40 border border-zinc-850 flex flex-col gap-4">
-                  <h3 className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 font-mono border-b border-zinc-850 pb-1.5 ${getCategoryColorClass(cat)}`}>
+                <div key={cat} className="p-4 rounded-2xl bg-zinc-950/40 border border-zinc-800/40 flex flex-col gap-4">
+                  <h3 className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 font-mono border-b border-zinc-800/40 pb-1.5 ${getCategoryColorClass(cat)}`}>
                     {getCategoryIcon(cat, "w-4 h-4 shrink-0")}
                     <span>{cat}</span>
                   </h3>
