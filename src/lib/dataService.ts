@@ -44,6 +44,13 @@ const getSampleRegisters = (habits: Habito[], usuarioId: string): RegistroDiario
   return registers;
 };
 
+// Helper to strip sensitive fields (like password) from user objects returned to client
+export function sanitizeUser(user: any) {
+  if (!user) return user;
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
+
 export const dataService = {
   // --- AUTH SYSTEM (SIMPLE LOGIN/SIGNUP) ---
   
@@ -71,7 +78,7 @@ export const dataService = {
           return { success: false, error: 'Senha incorreta.' };
         }
         
-        return { success: true, user: data };
+        return { success: true, user: sanitizeUser(data) };
       } catch (err: any) {
         console.error('Erro ao fazer login no Supabase:', err);
       }
@@ -88,7 +95,7 @@ export const dataService = {
       return { success: false, error: 'Senha incorreta.' };
     }
     
-    return { success: true, user: found };
+    return { success: true, user: sanitizeUser(found) };
   },
 
   async signup(username: string, password: string, displayName: string): Promise<{ success: boolean; user?: any; error?: string }> {
@@ -114,11 +121,11 @@ export const dataService = {
         const { data, error } = await supabase
           .from('usuarios')
           .insert([{ username: cleanUser, password, display_name: displayName }])
-          .select()
+          .select('id, username, display_name, created_at')
           .single();
           
         if (error) throw error;
-        return { success: true, user: data };
+        return { success: true, user: sanitizeUser(data) };
       } catch (err: any) {
         console.error('Erro ao cadastrar usuário no Supabase:', err);
         return { success: false, error: 'Erro ao conectar ao banco de dados.' };
@@ -143,7 +150,7 @@ export const dataService = {
     
     localUsers.push(newUser);
     localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(localUsers));
-    return { success: true, user: newUser };
+    return { success: true, user: sanitizeUser(newUser) };
   },
 
   async updatePerfil(usuarioId: string, displayName: string, novaSenha?: string): Promise<{ success: boolean; user?: any; error?: string }> {
@@ -162,11 +169,11 @@ export const dataService = {
           .from('usuarios')
           .update(updateData)
           .eq('username', usuarioId)
-          .select()
+          .select('id, username, display_name, created_at')
           .single();
           
         if (error) throw error;
-        return { success: true, user: data };
+        return { success: true, user: sanitizeUser(data) };
       } catch (err: any) {
         console.error('Erro ao atualizar perfil no Supabase:', err);
         return { success: false, error: 'Erro ao atualizar perfil no banco de dados.' };
@@ -182,7 +189,7 @@ export const dataService = {
         localUsers[index].password = novaSenha;
       }
       localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(localUsers));
-      return { success: true, user: localUsers[index] };
+      return { success: true, user: sanitizeUser(localUsers[index]) };
     }
     return { success: false, error: 'Usuário não encontrado localmente.' };
   },

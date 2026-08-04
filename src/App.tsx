@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Export from './pages/Export';
 import Settings from './pages/Settings';
 import LoginScreen from './components/LoginScreen';
+import { sanitizeUser } from './lib/dataService';
 import { CheckSquare, BarChart3, FileText, Sparkles, Settings as SettingsIcon, LogOut } from 'lucide-react';
 
 type TabType = 'checklist' | 'dashboard' | 'export' | 'settings';
@@ -18,7 +19,12 @@ export default function App() {
     try {
       const stored = localStorage.getItem('rotina_track_logged_user');
       if (stored) {
-        setUser(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        const safe = sanitizeUser(parsed);
+        if (parsed.password) {
+          localStorage.setItem('rotina_track_logged_user', JSON.stringify(safe));
+        }
+        setUser(safe);
       }
     } catch (err) {
       console.error('Erro ao ler credenciais salvas:', err);
@@ -28,9 +34,10 @@ export default function App() {
   }, []);
 
   const handleLoginSuccess = (loggedInUser: any, remember: boolean) => {
-    setUser(loggedInUser);
+    const safeUser = sanitizeUser(loggedInUser);
+    setUser(safeUser);
     if (remember) {
-      localStorage.setItem('rotina_track_logged_user', JSON.stringify(loggedInUser));
+      localStorage.setItem('rotina_track_logged_user', JSON.stringify(safeUser));
     }
   };
 
